@@ -11,17 +11,18 @@ import (
 	"strings"
 	"time"
 
+	"owlistic-notes/owlistic/models"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"owlistic-notes/owlistic/models"
 )
 
 type AIService struct {
-	db             *gorm.DB
-	anthropicKey   string
-	openaiKey      string
-	chromaBaseURL  string
-	httpClient     *http.Client
+	db            *gorm.DB
+	anthropicKey  string
+	openaiKey     string
+	chromaBaseURL string
+	httpClient    *http.Client
 }
 
 type AnthropicRequest struct {
@@ -54,11 +55,11 @@ type OpenAIEmbeddingResponse struct {
 
 func NewAIService(db *gorm.DB) *AIService {
 	return &AIService{
-		db:             db,
-		anthropicKey:   os.Getenv("ANTHROPIC_API_KEY"),
-		openaiKey:      os.Getenv("OPENAI_API_KEY"),
-		chromaBaseURL:  os.Getenv("CHROMA_BASE_URL"),
-		httpClient:     &http.Client{Timeout: 30 * time.Second},
+		db:            db,
+		anthropicKey:  os.Getenv("ANTHROPIC_API_KEY"),
+		openaiKey:     os.Getenv("OPENAI_API_KEY"),
+		chromaBaseURL: os.Getenv("CHROMA_BASE_URL"),
+		httpClient:    &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -181,11 +182,11 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 
 func (ai *AIService) extractNoteContent(note *models.Note) string {
 	var content strings.Builder
-	
+
 	// Load blocks
 	var blocks []models.Block
 	ai.db.Where("note_id = ?", note.ID).Find(&blocks)
-	
+
 	for _, block := range blocks {
 		// Extract text content from block based on type
 		if textContent := ai.extractBlockText(block); textContent != "" {
@@ -193,7 +194,7 @@ func (ai *AIService) extractNoteContent(note *models.Note) string {
 			content.WriteString("\n")
 		}
 	}
-	
+
 	return content.String()
 }
 
@@ -213,7 +214,7 @@ Title:`, content[:min(500, len(content))])
 	if len(title) > 100 {
 		title = title[:100]
 	}
-	
+
 	return title, nil
 }
 
@@ -344,7 +345,7 @@ func (ai *AIService) callAnthropic(prompt string, maxTokens int) (string, error)
 
 	var anthropicResp AnthropicResponse
 	if err := json.NewDecoder(resp.Body).Decode(&anthropicResp); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if len(anthropicResp.Content) == 0 {
@@ -359,30 +360,33 @@ func (ai *AIService) extractBlockText(block models.Block) string {
 	if block.Content == nil {
 		return ""
 	}
-	
+
 	// For most block types, look for "text" field in content
 	if text, ok := block.Content["text"].(string); ok {
 		return text
 	}
-	
+
 	// For other content structures, try to extract meaningful text
 	if content, ok := block.Content["content"].(string); ok {
 		return content
 	}
-	
+
 	return ""
 }
 
 // SearchNotesBySimilarity performs semantic search using embeddings
 func (ai *AIService) SearchNotesBySimilarity(ctx context.Context, query string, limit int) ([]models.AIEnhancedNote, error) {
 	// Generate embedding for query
-	_, err := ai.createEmbedding(query)
+	queryEmbedding, err := ai.createEmbedding(query)
 	if err != nil {
 		return nil, err
 	}
 
 	// This would use vector similarity search with ChromaDB or pgvector
 	// For now, return empty slice - needs vector database integration
+	// When implemented, you would use queryEmbedding for similarity search
+	_ = queryEmbedding // Suppress unused variable warning
+
 	var results []models.AIEnhancedNote
 	return results, nil
 }
