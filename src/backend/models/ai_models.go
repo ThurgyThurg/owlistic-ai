@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -58,9 +59,9 @@ func (e *Embeddings) Scan(value interface{}) error {
 type AIEnhancedNote struct {
 	Note                    // Embed existing Note struct
 	Summary        string   `json:"summary,omitempty"`
-	AITags         []string `gorm:"type:text[]" json:"ai_tags,omitempty"`
-	ActionSteps    []string `gorm:"type:text[]" json:"action_steps,omitempty"`
-	LearningItems  []string `gorm:"type:text[]" json:"learning_items,omitempty"`
+	AITags         pq.StringArray `gorm:"type:text[]" json:"ai_tags,omitempty"`
+	ActionSteps    pq.StringArray `gorm:"type:text[]" json:"action_steps,omitempty"`
+	LearningItems  pq.StringArray `gorm:"type:text[]" json:"learning_items,omitempty"`
 	Embeddings     Embeddings `gorm:"type:jsonb" json:"embeddings,omitempty"`
 	RelatedNoteIDs []uuid.UUID `gorm:"type:text[]" json:"related_note_ids,omitempty"`
 	AIMetadata     AIMetadata `gorm:"type:jsonb;default:'{}'::jsonb" json:"ai_metadata,omitempty"`
