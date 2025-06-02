@@ -613,9 +613,16 @@ func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+ai.anthropicKey)
-	httpReq.Header.Set("anthropic-version", "2023-06-01")
+	httpReq.Header.Set("anthropic-version", "2023-10-01")
 
 	log.Printf("Sending request to Anthropic API...")
+	log.Printf("Request URL: %s", httpReq.URL)
+	log.Printf("Request headers: Content-Type=%s, Authorization=Bearer %s..., anthropic-version=%s", 
+		httpReq.Header.Get("Content-Type"),
+		ai.anthropicKey[:20],
+		httpReq.Header.Get("anthropic-version"))
+	log.Printf("Request body: %s", string(jsonData)[:min(200, len(jsonData))])
+	
 	resp, err := ai.httpClient.Do(httpReq)
 	if err != nil {
 		log.Printf("Anthropic API request failed: %v", err)
