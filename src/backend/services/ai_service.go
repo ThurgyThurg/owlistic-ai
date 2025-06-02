@@ -18,11 +18,13 @@ import (
 )
 
 type AIService struct {
-	db            *gorm.DB
-	anthropicKey  string
-	openaiKey     string
-	chromaBaseURL string
-	httpClient    *http.Client
+	db             *gorm.DB
+	anthropicKey   string
+	anthropicModel string
+	openaiKey      string
+	openaiModel    string
+	chromaBaseURL  string
+	httpClient     *http.Client
 }
 
 type AnthropicRequest struct {
@@ -54,12 +56,25 @@ type OpenAIEmbeddingResponse struct {
 }
 
 func NewAIService(db *gorm.DB) *AIService {
+	// Set default models if not specified
+	anthropicModel := os.Getenv("ANTHROPIC_MODEL")
+	if anthropicModel == "" {
+		anthropicModel = "claude-3-5-sonnet-20241022" // Default Anthropic model
+	}
+	
+	openaiModel := os.Getenv("OPENAI_MODEL")
+	if openaiModel == "" {
+		openaiModel = "text-embedding-3-small" // Default OpenAI embedding model
+	}
+
 	return &AIService{
-		db:            db,
-		anthropicKey:  os.Getenv("ANTHROPIC_API_KEY"),
-		openaiKey:     os.Getenv("OPENAI_API_KEY"),
-		chromaBaseURL: os.Getenv("CHROMA_BASE_URL"),
-		httpClient:    &http.Client{Timeout: 30 * time.Second},
+		db:             db,
+		anthropicKey:   os.Getenv("ANTHROPIC_API_KEY"),
+		anthropicModel: anthropicModel,
+		openaiKey:      os.Getenv("OPENAI_API_KEY"),
+		openaiModel:    openaiModel,
+		chromaBaseURL:  os.Getenv("CHROMA_BASE_URL"),
+		httpClient:     &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -324,7 +339,7 @@ Tags:`, title, content[:min(800, len(content))])
 
 func (ai *AIService) createEmbedding(text string) ([]float64, error) {
 	req := OpenAIEmbeddingRequest{
-		Model: "text-embedding-3-small",
+		Model: ai.openaiModel,
 		Input: text[:min(8000, len(text))],
 	}
 
@@ -360,14 +375,38 @@ func (ai *AIService) createEmbedding(text string) ([]float64, error) {
 }
 
 func (ai *AIService) findRelatedNotes(ctx context.Context, embedding []float64, excludeID uuid.UUID) ([]uuid.UUID, error) {
-	// This would integrate with ChromaDB or implement similarity search
-	// For now, return empty slice - this needs vector database integration
-	return []uuid.UUID{}, nil
+	if ai.chromaBaseURL == "" {
+		// Chroma not configured, skip related notes
+		return []uuid.UUID{}, nil
+	}
+
+	// Store the current note's embedding in Chroma
+	if err := ai.storeEmbeddingInChroma(ctx, excludeID.String(), embedding); err != nil {
+		log.Printf("Failed to store embedding in Chroma: %v", err)
+		// Don't fail the whole process
+	}
+
+	// Query for similar embeddings
+	relatedIDs, err := ai.queryChromaForSimilar(ctx, embedding, excludeID.String(), 5)
+	if err != nil {
+		log.Printf("Failed to query Chroma for similar embeddings: %v", err)
+		return []uuid.UUID{}, nil
+	}
+
+	// Convert string IDs back to UUIDs
+	var result []uuid.UUID
+	for _, idStr := range relatedIDs {
+		if id, err := uuid.Parse(idStr); err == nil {
+			result = append(result, id)
+		}
+	}
+
+	return result, nil
 }
 
 func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens int) (string, error) {
 	req := AnthropicRequest{
-		Model:     "claude-3-5-sonnet-20241022",
+		Model:     ai.anthropicModel,
 		MaxTokens: maxTokens,
 		Messages: []Message{
 			{Role: "user", Content: prompt},
@@ -629,6 +668,99 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 	}
 
 	return nil
+}
+
+// storeEmbeddingInChroma stores an embedding in the Chroma vector database
+func (ai *AIService) storeEmbeddingInChroma(ctx context.Context, noteID string, embedding []float64) error {
+	// Create collection if it doesn't exist
+	collectionPayload := map[string]interface{}{
+		"name": "note_embeddings",
+		"metadata": map[string]string{
+			"description": "Embeddings for note similarity search",
+		},
+	}
+
+	collectionJSON, _ := json.Marshal(collectionPayload)
+	collectionReq, err := http.NewRequestWithContext(ctx, "POST", ai.chromaBaseURL+"/api/v1/collections", bytes.NewBuffer(collectionJSON))
+	if err != nil {
+		return err
+	}
+	collectionReq.Header.Set("Content-Type", "application/json")
+	
+	// Try to create collection (will fail if exists, which is fine)
+	ai.httpClient.Do(collectionReq)
+
+	// Add the embedding
+	addPayload := map[string]interface{}{
+		"embeddings": [][]float64{embedding},
+		"documents":  []string{noteID}, // Use noteID as document
+		"ids":        []string{noteID},
+		"metadatas":  []map[string]string{{"note_id": noteID}},
+	}
+
+	addJSON, err := json.Marshal(addPayload)
+	if err != nil {
+		return err
+	}
+
+	addReq, err := http.NewRequestWithContext(ctx, "POST", ai.chromaBaseURL+"/api/v1/collections/note_embeddings/add", bytes.NewBuffer(addJSON))
+	if err != nil {
+		return err
+	}
+	addReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := ai.httpClient.Do(addReq)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+// queryChromaForSimilar finds similar embeddings in Chroma
+func (ai *AIService) queryChromaForSimilar(ctx context.Context, embedding []float64, excludeID string, limit int) ([]string, error) {
+	queryPayload := map[string]interface{}{
+		"query_embeddings": [][]float64{embedding},
+		"n_results":        limit + 1, // Get one extra in case we need to exclude current note
+	}
+
+	queryJSON, err := json.Marshal(queryPayload)
+	if err != nil {
+		return nil, err
+	}
+
+	queryReq, err := http.NewRequestWithContext(ctx, "POST", ai.chromaBaseURL+"/api/v1/collections/note_embeddings/query", bytes.NewBuffer(queryJSON))
+	if err != nil {
+		return nil, err
+	}
+	queryReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := ai.httpClient.Do(queryReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		IDs [][]string `json:"ids"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	// Extract IDs and exclude the current note
+	var relatedIDs []string
+	if len(result.IDs) > 0 {
+		for _, id := range result.IDs[0] {
+			if id != excludeID && len(relatedIDs) < limit {
+				relatedIDs = append(relatedIDs, id)
+			}
+		}
+	}
+
+	return relatedIDs, nil
 }
 
 func min(a, b int) int {
