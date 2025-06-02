@@ -21,8 +21,6 @@ type AIService struct {
 	db             *gorm.DB
 	anthropicKey   string
 	anthropicModel string
-	openaiKey      string
-	openaiModel    string
 	chromaBaseURL  string
 	httpClient     *http.Client
 }
@@ -44,15 +42,12 @@ type AnthropicResponse struct {
 	} `json:"content"`
 }
 
-type OpenAIEmbeddingRequest struct {
-	Model string `json:"model"`
-	Input string `json:"input"`
+type ChromaEmbeddingRequest struct {
+	Input []string `json:"input"`
 }
 
-type OpenAIEmbeddingResponse struct {
-	Data []struct {
-		Embedding []float64 `json:"embedding"`
-	} `json:"data"`
+type ChromaEmbeddingResponse struct {
+	Data [][]float64 `json:"data"`
 }
 
 func NewAIService(db *gorm.DB) *AIService {
@@ -61,18 +56,11 @@ func NewAIService(db *gorm.DB) *AIService {
 	if anthropicModel == "" {
 		anthropicModel = "claude-3-5-sonnet-20241022" // Default Anthropic model
 	}
-	
-	openaiModel := os.Getenv("OPENAI_MODEL")
-	if openaiModel == "" {
-		openaiModel = "text-embedding-3-small" // Default OpenAI embedding model
-	}
 
 	return &AIService{
 		db:             db,
 		anthropicKey:   os.Getenv("ANTHROPIC_API_KEY"),
 		anthropicModel: anthropicModel,
-		openaiKey:      os.Getenv("OPENAI_API_KEY"),
-		openaiModel:    openaiModel,
 		chromaBaseURL:  os.Getenv("CHROMA_BASE_URL"),
 		httpClient:     &http.Client{Timeout: 30 * time.Second},
 	}
@@ -134,7 +122,7 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 
 	// Generate embeddings
 	go func() {
-		embedding, err := ai.createEmbedding(fmt.Sprintf("%s\n\n%s", note.Title, content))
+		embedding, err := ai.createEmbeddingWithChroma(fmt.Sprintf("%s\n\n%s", note.Title, content))
 		if err != nil {
 			errChan <- err
 			return
@@ -337,10 +325,13 @@ Tags:`, title, content[:min(800, len(content))])
 	return tags, nil
 }
 
-func (ai *AIService) createEmbedding(text string) ([]float64, error) {
-	req := OpenAIEmbeddingRequest{
-		Model: ai.openaiModel,
-		Input: text[:min(8000, len(text))],
+func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
+	if ai.chromaBaseURL == "" {
+		return nil, fmt.Errorf("chroma base URL not configured")
+	}
+
+	req := ChromaEmbeddingRequest{
+		Input: []string{text[:min(8000, len(text))]},
 	}
 
 	jsonData, err := json.Marshal(req)
@@ -348,13 +339,12 @@ func (ai *AIService) createEmbedding(text string) ([]float64, error) {
 		return nil, err
 	}
 
-	httpReq, err := http.NewRequest("POST", "https://api.openai.com/v1/embeddings", bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/embeddings", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+ai.openaiKey)
 
 	resp, err := ai.httpClient.Do(httpReq)
 	if err != nil {
@@ -362,7 +352,7 @@ func (ai *AIService) createEmbedding(text string) ([]float64, error) {
 	}
 	defer resp.Body.Close()
 
-	var embResp OpenAIEmbeddingResponse
+	var embResp ChromaEmbeddingResponse
 	if err := json.NewDecoder(resp.Body).Decode(&embResp); err != nil {
 		return nil, err
 	}
@@ -371,7 +361,7 @@ func (ai *AIService) createEmbedding(text string) ([]float64, error) {
 		return nil, fmt.Errorf("no embedding data returned")
 	}
 
-	return embResp.Data[0].Embedding, nil
+	return embResp.Data[0], nil
 }
 
 func (ai *AIService) findRelatedNotes(ctx context.Context, embedding []float64, excludeID uuid.UUID) ([]uuid.UUID, error) {
@@ -467,7 +457,7 @@ func (ai *AIService) extractBlockText(block models.Block) string {
 // SearchNotesBySimilarity performs semantic search using embeddings
 func (ai *AIService) SearchNotesBySimilarity(ctx context.Context, query string, limit int) ([]models.AIEnhancedNote, error) {
 	// Generate embedding for query
-	queryEmbedding, err := ai.createEmbedding(query)
+	queryEmbedding, err := ai.createEmbeddingWithChroma(query)
 	if err != nil {
 		return nil, err
 	}
