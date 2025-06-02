@@ -20,9 +20,7 @@ services:
       - DB_NAME=postgres
       # AI API Keys - these will be read from your environment or .env file
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-5-sonnet-20241022}
-      - OPENAI_MODEL=${OPENAI_MODEL:-text-embedding-3-small}
       - CHROMA_BASE_URL=http://chroma:8000
       # Optional AI integrations
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
