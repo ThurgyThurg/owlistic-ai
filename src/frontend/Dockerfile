@@ -52,6 +52,9 @@ FROM --platform=linux/$TARGETARCH nginx:alpine
 # Copy the build output to replace the default nginx contents
 COPY --from=build /app/build/web /usr/share/nginx/html
 
+# Copy custom nginx configuration
+COPY --from=build /app/nginx.conf /etc/nginx/conf.d/default.conf
+
 # Expose port 80
 EXPOSE 80
 
