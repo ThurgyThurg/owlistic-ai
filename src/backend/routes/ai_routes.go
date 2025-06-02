@@ -23,8 +23,8 @@ func NewAIRoutes(db *gorm.DB) *AIRoutes {
 	}
 }
 
-func (ar *AIRoutes) RegisterRoutes(router *gin.Engine) {
-	aiGroup := router.Group("/api/ai")
+func (ar *AIRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
+	aiGroup := routerGroup.Group("/ai")
 	{
 		// Note AI enhancements
 		aiGroup.POST("/notes/:id/process", ar.processNoteWithAI)

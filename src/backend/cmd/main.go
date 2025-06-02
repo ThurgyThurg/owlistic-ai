@@ -105,9 +105,9 @@ func main() {
 	wsGroup.Use(middleware.AuthMiddleware(authService))
 	routes.RegisterWebSocketRoutes(wsGroup, webSocketService)
 
-	// Register AI routes
+	// Register AI routes on protected group
 	aiRoutes := routes.NewAIRoutes(db.DB)
-	aiRoutes.RegisterRoutes(router)
+	aiRoutes.RegisterRoutes(protectedGroup)
 
 	// Register debug routes for monitoring events
 	routes.SetupDebugRoutes(router, db)
