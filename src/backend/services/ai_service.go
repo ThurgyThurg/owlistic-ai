@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -327,11 +328,15 @@ Tags:`, title, content[:min(800, len(content))])
 
 func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 	if ai.chromaBaseURL == "" {
+		log.Printf("Chroma base URL not configured, skipping embedding generation")
 		return nil, fmt.Errorf("chroma base URL not configured")
 	}
 
+	log.Printf("Attempting to create embedding for text length: %d", len(text))
+
 	// Ensure the note_embeddings collection exists with proper embedding function
 	if err := ai.ensureEmbeddingCollection(); err != nil {
+		log.Printf("Failed to ensure embedding collection: %v", err)
 		return nil, fmt.Errorf("failed to ensure embedding collection: %w", err)
 	}
 
@@ -346,20 +351,29 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 
 	addJSON, err := json.Marshal(addPayload)
 	if err != nil {
+		log.Printf("Failed to marshal add payload: %v", err)
 		return nil, err
 	}
 
 	addReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections/note_embeddings/add", bytes.NewBuffer(addJSON))
 	if err != nil {
+		log.Printf("Failed to create add request: %v", err)
 		return nil, err
 	}
 	addReq.Header.Set("Content-Type", "application/json")
 
+	log.Printf("Adding document to Chroma collection...")
 	addResp, err := ai.httpClient.Do(addReq)
 	if err != nil {
+		log.Printf("Failed to add document to Chroma: %v", err)
 		return nil, err
 	}
-	addResp.Body.Close()
+	defer addResp.Body.Close()
+
+	if addResp.StatusCode != 200 && addResp.StatusCode != 201 {
+		log.Printf("Chroma add request failed with status: %d", addResp.StatusCode)
+		return nil, fmt.Errorf("chroma add request failed with status: %d", addResp.StatusCode)
+	}
 
 	// Get the document with its embedding
 	getPayload := map[string]interface{}{
@@ -369,26 +383,36 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 
 	getJSON, err := json.Marshal(getPayload)
 	if err != nil {
+		log.Printf("Failed to marshal get payload: %v", err)
 		return nil, err
 	}
 
 	getReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections/note_embeddings/get", bytes.NewBuffer(getJSON))
 	if err != nil {
+		log.Printf("Failed to create get request: %v", err)
 		return nil, err
 	}
 	getReq.Header.Set("Content-Type", "application/json")
 
+	log.Printf("Getting embedding from Chroma...")
 	getResp, err := ai.httpClient.Do(getReq)
 	if err != nil {
+		log.Printf("Failed to get embedding from Chroma: %v", err)
 		return nil, err
 	}
 	defer getResp.Body.Close()
+
+	if getResp.StatusCode != 200 {
+		log.Printf("Chroma get request failed with status: %d", getResp.StatusCode)
+		return nil, fmt.Errorf("chroma get request failed with status: %d", getResp.StatusCode)
+	}
 
 	var getResult struct {
 		Embeddings [][]float64 `json:"embeddings"`
 	}
 
 	if err := json.NewDecoder(getResp.Body).Decode(&getResult); err != nil {
+		log.Printf("Failed to decode Chroma response: %v", err)
 		return nil, err
 	}
 
@@ -404,30 +428,39 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 	}
 
 	if len(getResult.Embeddings) == 0 || len(getResult.Embeddings[0]) == 0 {
+		log.Printf("No embedding data returned from Chroma")
 		return nil, fmt.Errorf("no embedding data returned from Chroma")
 	}
 
+	log.Printf("Successfully generated embedding with dimension: %d", len(getResult.Embeddings[0]))
 	return getResult.Embeddings[0], nil
 }
 
 // ensureEmbeddingCollection creates the note_embeddings collection if it doesn't exist
 func (ai *AIService) ensureEmbeddingCollection() error {
+	log.Printf("Checking if note_embeddings collection exists...")
+	
 	// Try to get the collection first
 	getReq, err := http.NewRequest("GET", ai.chromaBaseURL+"/api/v1/collections/note_embeddings", nil)
 	if err != nil {
+		log.Printf("Failed to create collection check request: %v", err)
 		return err
 	}
 
 	resp, err := ai.httpClient.Do(getReq)
 	if err != nil {
+		log.Printf("Failed to check collection existence: %v", err)
 		return err
 	}
 	resp.Body.Close()
 
 	// If collection exists (status 200), return success
 	if resp.StatusCode == 200 {
+		log.Printf("Collection note_embeddings already exists")
 		return nil
 	}
+
+	log.Printf("Collection doesn't exist (status: %d), creating it...", resp.StatusCode)
 
 	// Create collection with default embedding function (all-MiniLM-L6-v2)
 	collectionPayload := map[string]interface{}{
@@ -440,21 +473,30 @@ func (ai *AIService) ensureEmbeddingCollection() error {
 
 	collectionJSON, err := json.Marshal(collectionPayload)
 	if err != nil {
+		log.Printf("Failed to marshal collection payload: %v", err)
 		return err
 	}
 
 	collectionReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections", bytes.NewBuffer(collectionJSON))
 	if err != nil {
+		log.Printf("Failed to create collection request: %v", err)
 		return err
 	}
 	collectionReq.Header.Set("Content-Type", "application/json")
 
 	createResp, err := ai.httpClient.Do(collectionReq)
 	if err != nil {
+		log.Printf("Failed to create collection: %v", err)
 		return err
 	}
-	createResp.Body.Close()
+	defer createResp.Body.Close()
 
+	if createResp.StatusCode != 200 && createResp.StatusCode != 201 {
+		log.Printf("Collection creation failed with status: %d", createResp.StatusCode)
+		return fmt.Errorf("collection creation failed with status: %d", createResp.StatusCode)
+	}
+
+	log.Printf("Successfully created note_embeddings collection")
 	return nil
 }
 
@@ -489,6 +531,13 @@ func (ai *AIService) findRelatedNotes(ctx context.Context, embedding []float64, 
 }
 
 func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens int) (string, error) {
+	log.Printf("Making Anthropic API call with model: %s, maxTokens: %d", ai.anthropicModel, maxTokens)
+	
+	if ai.anthropicKey == "" {
+		log.Printf("ERROR: Anthropic API key is empty")
+		return "", fmt.Errorf("anthropic API key not configured")
+	}
+
 	req := AnthropicRequest{
 		Model:     ai.anthropicModel,
 		MaxTokens: maxTokens,
@@ -499,11 +548,13 @@ func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens
 
 	jsonData, err := json.Marshal(req)
 	if err != nil {
+		log.Printf("Failed to marshal Anthropic request: %v", err)
 		return "", err
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonData))
 	if err != nil {
+		log.Printf("Failed to create Anthropic request: %v", err)
 		return "", err
 	}
 
@@ -511,21 +562,34 @@ func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens
 	httpReq.Header.Set("Authorization", "Bearer "+ai.anthropicKey)
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 
+	log.Printf("Sending request to Anthropic API...")
 	resp, err := ai.httpClient.Do(httpReq)
 	if err != nil {
+		log.Printf("Anthropic API request failed: %v", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
+	log.Printf("Anthropic API response status: %d", resp.StatusCode)
+
+	if resp.StatusCode != 200 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("Anthropic API error response: %s", string(bodyBytes))
+		return "", fmt.Errorf("anthropic API returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
 	var anthropicResp AnthropicResponse
 	if err := json.NewDecoder(resp.Body).Decode(&anthropicResp); err != nil {
+		log.Printf("Failed to decode Anthropic response: %v", err)
 		return "", err
 	}
 
 	if len(anthropicResp.Content) == 0 {
+		log.Printf("Anthropic response has no content")
 		return "", fmt.Errorf("no content in response")
 	}
 
+	log.Printf("Anthropic API call successful, response length: %d", len(anthropicResp.Content[0].Text))
 	return anthropicResp.Content[0].Text, nil
 }
 
