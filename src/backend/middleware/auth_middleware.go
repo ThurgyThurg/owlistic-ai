@@ -32,6 +32,8 @@ func AuthMiddleware(authService services.AuthServiceInterface) gin.HandlerFunc {
 		// Extract and validate token
 		claims, err := ExtractAndValidateToken(c, authService)
 		if err != nil {
+			// Add debug logging
+			c.Header("X-Debug-Auth-Error", err.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
