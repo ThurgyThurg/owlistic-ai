@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -75,7 +76,9 @@ func (ar *AIRoutes) processNoteWithAI(c *gin.Context) {
 
 	// Process note with AI in background
 	go func() {
-		if err := ar.aiService.ProcessNoteWithAI(c.Request.Context(), noteID); err != nil {
+		// Use background context to prevent cancellation when HTTP request completes
+		ctx := context.Background()
+		if err := ar.aiService.ProcessNoteWithAI(ctx, noteID); err != nil {
 			// Log error - in production, you might want to store this in a job queue
 			// and have proper error handling/retry logic
 			println("AI processing error:", err.Error())
