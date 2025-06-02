@@ -187,8 +187,9 @@ func (ai *AIService) extractNoteContent(note *models.Note) string {
 	ai.db.Where("note_id = ?", note.ID).Find(&blocks)
 	
 	for _, block := range blocks {
-		if block.Content != "" {
-			content.WriteString(block.Content)
+		// Extract text content from block based on type
+		if textContent := ai.extractBlockText(block); textContent != "" {
+			content.WriteString(textContent)
 			content.WriteString("\n")
 		}
 	}
@@ -353,10 +354,29 @@ func (ai *AIService) callAnthropic(prompt string, maxTokens int) (string, error)
 	return anthropicResp.Content[0].Text, nil
 }
 
+// extractBlockText extracts readable text from a block's content
+func (ai *AIService) extractBlockText(block models.Block) string {
+	if block.Content == nil {
+		return ""
+	}
+	
+	// For most block types, look for "text" field in content
+	if text, ok := block.Content["text"].(string); ok {
+		return text
+	}
+	
+	// For other content structures, try to extract meaningful text
+	if content, ok := block.Content["content"].(string); ok {
+		return content
+	}
+	
+	return ""
+}
+
 // SearchNotesBySimilarity performs semantic search using embeddings
 func (ai *AIService) SearchNotesBySimilarity(ctx context.Context, query string, limit int) ([]models.AIEnhancedNote, error) {
 	// Generate embedding for query
-	queryEmbedding, err := ai.createEmbedding(query)
+	_, err := ai.createEmbedding(query)
 	if err != nil {
 		return nil, err
 	}
