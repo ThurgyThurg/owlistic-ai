@@ -338,6 +338,95 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
             ],
 
+            if (aiEnhancement is Map && 
+                aiEnhancement['action_steps'] != null && 
+                aiEnhancement['action_steps'] is List &&
+                (aiEnhancement['action_steps'] as List).isNotEmpty) ...[ 
+              const SizedBox(height: 12),
+              Text(
+                'Action Steps',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 4),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: (aiEnhancement['action_steps'] as List)
+                    .asMap()
+                    .entries
+                    .map<Widget>((entry) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${entry.key + 1}',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onPrimary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  entry.value.toString(),
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ],
+
+            if (aiEnhancement is Map && 
+                aiEnhancement['learning_items'] != null && 
+                aiEnhancement['learning_items'] is List &&
+                (aiEnhancement['learning_items'] as List).isNotEmpty) ...[ 
+              const SizedBox(height: 12),
+              Text(
+                'Learning Opportunities',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 4),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: (aiEnhancement['learning_items'] as List)
+                    .map<Widget>((item) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.lightbulb_outline,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.toString(),
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ],
+
             if (aiEnhancement is Map &&
                 aiEnhancement['related_note_ids'] != null &&
                 aiEnhancement['related_note_ids'] is List &&

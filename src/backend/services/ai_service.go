@@ -79,7 +79,9 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 	summaryChan := make(chan string, 1)
 	tagsChan := make(chan []string, 1)
 	embeddingChan := make(chan []float64, 1)
-	errChan := make(chan error, 4)
+	actionStepsChan := make(chan []string, 1)
+	learningItemsChan := make(chan []string, 1)
+	errChan := make(chan error, 6)
 
 	// Generate title if empty
 	go func() {
@@ -125,16 +127,38 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 		embeddingChan <- embedding
 	}()
 
+	// Generate actionable steps
+	go func() {
+		steps, err := ai.extractActionableSteps(ctx, content, note.Title)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		actionStepsChan <- steps
+	}()
+
+	// Generate learning items
+	go func() {
+		items, err := ai.extractLearningItems(ctx, content, note.Title)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		learningItemsChan <- items
+	}()
+
 	// Collect results
 	var finalTitle string
 	var summary string
 	var aiTags []string
 	var embeddings []float64
+	var actionSteps []string
+	var learningItems []string
 	
 	completed := 0
 	errors := 0
 
-	for completed < 4 {
+	for completed < 6 {
 		select {
 		case title := <-titleChan:
 			finalTitle = title
@@ -148,6 +172,12 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 		case emb := <-embeddingChan:
 			embeddings = emb
 			completed++
+		case steps := <-actionStepsChan:
+			actionSteps = steps
+			completed++
+		case items := <-learningItemsChan:
+			learningItems = items
+			completed++
 		case err := <-errChan:
 			log.Printf("AI processing error: %v", err)
 			errors++
@@ -158,7 +188,7 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 	}
 	
 	// If all operations failed, return error
-	if errors >= 4 {
+	if errors >= 6 {
 		return fmt.Errorf("all AI processing operations failed")
 	}
 
@@ -167,6 +197,8 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 		Note:             note,
 		Summary:          summary,
 		AITags:           aiTags,
+		ActionSteps:      actionSteps,
+		LearningItems:    learningItems,
 		Embeddings:       embeddings,
 		ProcessingStatus: "completed",
 		LastProcessedAt:  &[]time.Time{time.Now()}[0],
@@ -402,6 +434,88 @@ func (ai *AIService) SearchNotesBySimilarity(ctx context.Context, query string, 
 
 	var results []models.AIEnhancedNote
 	return results, nil
+}
+
+// extractActionableSteps analyzes content and extracts actionable steps
+func (ai *AIService) extractActionableSteps(ctx context.Context, content, title string) ([]string, error) {
+	prompt := fmt.Sprintf(`Analyze this content and extract 3-7 specific, actionable steps that could be taken based on the information. Each step should be:
+- Concrete and actionable (start with a verb)
+- Specific enough to be implemented
+- Relevant to the content's main topic
+- Practical and achievable
+
+Title: %s
+Content: %s
+
+Return only the actionable steps as a JSON array. Example: ["Research available frameworks", "Set up development environment", "Create project timeline"]
+
+Actionable Steps:`, title, content[:min(1000, len(content))])
+
+	response, err := ai.callAnthropic(ctx, prompt, 200)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to parse as JSON
+	var steps []string
+	if err := json.Unmarshal([]byte(response), &steps); err != nil {
+		// Fallback: split by lines and clean up
+		lines := strings.Split(response, "\n")
+		for _, line := range lines {
+			step := strings.TrimSpace(strings.Trim(line, "-•*\"'[]"))
+			if step != "" && len(step) > 5 {
+				steps = append(steps, step)
+			}
+		}
+	}
+
+	// Limit to 7 steps
+	if len(steps) > 7 {
+		steps = steps[:7]
+	}
+
+	return steps, nil
+}
+
+// extractLearningItems analyzes content and extracts learning opportunities
+func (ai *AIService) extractLearningItems(ctx context.Context, content, title string) ([]string, error) {
+	prompt := fmt.Sprintf(`Analyze this content and identify 3-7 specific learning opportunities, concepts, or knowledge gaps that could be explored further. Each item should be:
+- A specific topic, concept, or skill to learn
+- Relevant to understanding or applying the content better
+- Educational and knowledge-building focused
+- Distinct from actionable steps (these are for learning, not doing)
+
+Title: %s
+Content: %s
+
+Return only the learning items as a JSON array. Example: ["Docker containerization principles", "REST API design patterns", "Database indexing strategies"]
+
+Learning Items:`, title, content[:min(1000, len(content))])
+
+	response, err := ai.callAnthropic(ctx, prompt, 200)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to parse as JSON
+	var items []string
+	if err := json.Unmarshal([]byte(response), &items); err != nil {
+		// Fallback: split by lines and clean up
+		lines := strings.Split(response, "\n")
+		for _, line := range lines {
+			item := strings.TrimSpace(strings.Trim(line, "-•*\"'[]"))
+			if item != "" && len(item) > 5 {
+				items = append(items, item)
+			}
+		}
+	}
+
+	// Limit to 7 items
+	if len(items) > 7 {
+		items = items[:7]
+	}
+
+	return items, nil
 }
 
 func min(a, b int) int {

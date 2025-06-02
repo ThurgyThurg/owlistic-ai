@@ -136,6 +136,8 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 		"ai_enhancement": gin.H{
 			"summary":            aiNote.Summary,
 			"ai_tags":           aiNote.AITags,
+			"action_steps":      aiNote.ActionSteps,
+			"learning_items":    aiNote.LearningItems,
 			"related_note_ids":  aiNote.RelatedNoteIDs,
 			"processing_status": aiNote.ProcessingStatus,
 			"last_processed_at": aiNote.LastProcessedAt,
