@@ -105,6 +105,10 @@ func main() {
 	wsGroup.Use(middleware.AuthMiddleware(authService))
 	routes.RegisterWebSocketRoutes(wsGroup, webSocketService)
 
+	// Register AI routes
+	aiRoutes := routes.NewAIRoutes(db)
+	aiRoutes.RegisterRoutes(protectedGroup)
+
 	// Register debug routes for monitoring events
 	routes.SetupDebugRoutes(router, db)
 
@@ -116,8 +120,9 @@ func main() {
 		os.Exit(0)
 	}()
 
-	log.Println("API server is running on port", cfg.AppPort)
-	if err := http.ListenAndServe(fmt.Sprintf(":%v", cfg.AppPort), router); err != nil {
+	log.Printf("API server is running on http://0.0.0.0:%v", cfg.AppPort)
+	log.Printf("Access from other devices: http://YOUR_COMPUTER_IP:%v", cfg.AppPort)
+	if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", cfg.AppPort), router); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

@@ -6,21 +6,27 @@ services:
     build:
       context: ./src/backend
       dockerfile: Dockerfile
-      args:
-        TARGETARCH: ${TARGETARCH:-arm64}
     ports:
       - "8080:8080"
     depends_on:
       - postgres
       - nats
     environment:
-      - APP_ORIGINS=http://localhost*,http://owlistic*,http://owlistic-app*
+      - APP_ORIGINS=http://localhost*,http://owlistic*,http://owlistic-app*,http://*:8080,http://*:80
       - BROKER_ADDRESS=nats:4222
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=admin
       - DB_PASSWORD=admin
       - DB_NAME=postgres
+      # AI API Keys - these will be read from your environment or .env file
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Optional AI integrations
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     networks:
       - server
       - events
@@ -31,8 +37,6 @@ services:
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
-      args:
-        TARGETARCH: ${TARGETARCH:-arm64}
     ports:
       - "80:80"
     depends_on:

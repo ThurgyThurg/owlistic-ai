@@ -1,13 +1,14 @@
 # Use the official Golang image as the base image
-FROM --platform=linux/$TARGETARCH golang:1.23.4-alpine AS builder
+FROM golang:1.23.4-alpine AS builder
 
-# Set ARG for platform targeting
-ARG TARGETARCH
+# Set ARG for platform targeting (but don't force platform)
+ARG TARGETARCH=amd64
 
 # Install base compiler libraries
 RUN apk add --no-cache \
     build-base \
-    gcc
+    gcc \
+    musl-dev
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -23,18 +24,25 @@ COPY . .
 
 # Build the application
 RUN CGO_ENABLED=1 GO111MODULE=on \
-    GOOS=linux GOARCH=${TARGETARCH} \
     go build -v \
     -o /app/owlistic ./cmd/main.go
 
 # Use a minimal Alpine image for the final stage
-FROM --platform=linux/$TARGETARCH alpine:3.19
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata
 
 # Set the working directory inside the container
 WORKDIR /app
 
 # Copy the built binary from the builder stage
 COPY --from=builder /app/owlistic ./
+
+# Make sure the binary is executable
+RUN chmod +x /app/owlistic
 
 # Expose the application port
 EXPOSE 8080

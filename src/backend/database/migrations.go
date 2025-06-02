@@ -21,6 +21,12 @@ func RunMigrations(db *gorm.DB) error {
 		&models.Block{},
 		&models.Task{},
 		&models.Event{},
+		// AI Enhancement models
+		&models.AIEnhancedNote{},
+		&models.AIAgent{},
+		&models.AIProject{},
+		&models.AITaskEnhancement{},
+		&models.ChatMemory{},
 	)
 
 	if err != nil {

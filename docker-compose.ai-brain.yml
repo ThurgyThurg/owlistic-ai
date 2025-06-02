@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  # AI Backend API
+  ai-backend:
+    build: 
+      context: ./src/ai_backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://ai_user:ai_password@postgres:5432/ai_second_brain
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_DB_PATH=/app/chroma_db
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+    volumes:
+      - ai_chroma_data:/app/chroma_db
+      - ai_watched_folder:/app/watched_files
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # React Frontend
+  ai-frontend:
+    build:
+      context: ./src/ai_frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+    depends_on:
+      - ai-backend
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=ai_second_brain
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=ai_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    volumes:
+      - ai_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_second_brain"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for background tasks
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - ai_redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # Optional: Telegram Bot Service
+  telegram-bot:
+    build: 
+      context: ./src/ai_backend
+      dockerfile: Dockerfile
+    command: python -m services.telegram_bot
+    environment:
+      - DATABASE_URL=postgresql://ai_user:ai_password@postgres:5432/ai_second_brain
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+      - ai-backend
+    restart: unless-stopped
+    profiles:
+      - telegram
+
+  # Optional: File Watcher Service
+  file-watcher:
+    build: 
+      context: ./src/ai_backend
+      dockerfile: Dockerfile
+    command: python -m services.file_watcher
+    environment:
+      - DATABASE_URL=postgresql://ai_user:ai_password@postgres:5432/ai_second_brain
+      - WATCHED_FOLDER=/app/watched_files
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ai_watched_folder:/app/watched_files
+    depends_on:
+      - postgres
+      - ai-backend
+    restart: unless-stopped
+    profiles:
+      - file-watcher
+
+volumes:
+  ai_postgres_data:
+    driver: local
+  ai_redis_data:
+    driver: local
+  ai_chroma_data:
+    driver: local
+  ai_watched_folder:
+    driver: local
+
+networks:
+  default:
+    name: ai-second-brain-network
