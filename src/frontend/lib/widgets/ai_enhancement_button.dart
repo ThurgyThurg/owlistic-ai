@@ -60,7 +60,8 @@ class _AIEnhancementButtonState extends State<AIEnhancementButton>
     _animationController.repeat();
 
     try {
-      await AIService().processNoteWithAI(widget.noteId);
+      final result = await AIService().processNoteWithAI(widget.noteId);
+      _logger.info('AI processing result: $result');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

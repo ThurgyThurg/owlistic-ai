@@ -171,11 +171,22 @@ abstract class BaseService {
     bool isSuccess = response.statusCode >= 200 && response.statusCode < 300;
     
     if (!isSuccess) {
-      _logger.error(
-        'HTTP $method request failed: $url\n'
-        'Status: ${response.statusCode}\n'
-        'Response: ${response.body}'
-      );
+      String errorMessage = 'HTTP $method request failed: $url\n'
+          'Status: ${response.statusCode}\n'
+          'Response: ${response.body}';
+      
+      _logger.error(errorMessage);
+      
+      // Throw specific exceptions based on status code
+      if (response.statusCode == 401) {
+        throw Exception('Authentication failed: ${response.body}');
+      } else if (response.statusCode == 403) {
+        throw Exception('Access forbidden: ${response.body}');
+      } else if (response.statusCode == 404) {
+        throw Exception('Resource not found: ${response.body}');
+      } else {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
     }
   }
   
