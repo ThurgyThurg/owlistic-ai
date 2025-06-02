@@ -167,6 +167,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
   Map<String, dynamic>? _enhancementData;
   bool _isLoading = true;
   String? _error;
+  bool _isExpanded = true;
 
   @override
   void initState() {
@@ -311,6 +312,15 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
                 ),
                 const Spacer(),
                 IconButton(
+                  icon: Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  tooltip: _isExpanded ? 'Collapse' : 'Expand',
+                ),
+                IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: _loadEnhancementData,
                   tooltip: 'Refresh AI insights',
@@ -318,7 +328,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ],
             ),
             
-            if (aiEnhancement is Map && aiEnhancement['summary'] != null) ...[
+            if (_isExpanded && aiEnhancement is Map && aiEnhancement['summary'] != null) ...[
               const SizedBox(height: 12),
               Text(
                 'Summary',
@@ -328,7 +338,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               Text(aiEnhancement['summary'].toString()),
             ],
 
-            if (aiEnhancement is Map && 
+            if (_isExpanded && aiEnhancement is Map && 
                 aiEnhancement['ai_tags'] != null && 
                 aiEnhancement['ai_tags'] is List &&
                 (aiEnhancement['ai_tags'] as List).isNotEmpty) ...[
@@ -351,7 +361,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
             ],
 
-            if (aiEnhancement is Map && 
+            if (_isExpanded && aiEnhancement is Map && 
                 aiEnhancement['action_steps'] != null && 
                 aiEnhancement['action_steps'] is List &&
                 (aiEnhancement['action_steps'] as List).isNotEmpty) ...[ 
@@ -405,7 +415,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
             ],
 
-            if (aiEnhancement is Map && 
+            if (_isExpanded && aiEnhancement is Map && 
                 aiEnhancement['learning_items'] != null && 
                 aiEnhancement['learning_items'] is List &&
                 (aiEnhancement['learning_items'] as List).isNotEmpty) ...[ 
@@ -443,7 +453,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
             ],
 
-            if (aiEnhancement is Map &&
+            if (_isExpanded && aiEnhancement is Map &&
                 aiEnhancement['related_note_ids'] != null &&
                 aiEnhancement['related_note_ids'] is List &&
                 (aiEnhancement['related_note_ids'] as List).isNotEmpty) ...[
@@ -459,7 +469,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
             ],
 
-            if (aiEnhancement is Map && aiEnhancement['processing_status'] != null) ...[
+            if (_isExpanded && aiEnhancement is Map && aiEnhancement['processing_status'] != null) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
