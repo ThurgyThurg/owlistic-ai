@@ -11,7 +11,15 @@ class AIService extends BaseService {
     try {
       _logger.info('Processing note $noteId with AI');
       
-      final response = await authenticatedPost('/api/v1/ai/notes/$noteId/process', {});
+      // Use a longer timeout for AI processing (2 minutes)
+      final uri = await createUri('/api/v1/ai/notes/$noteId/process');
+      final response = await http.post(
+        uri,
+        headers: getAuthHeaders(),
+        body: jsonEncode({}),
+      ).timeout(const Duration(minutes: 2));
+      
+      _validateResponse(response, 'POST', uri.toString());
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       
       _logger.info('AI processing started for note $noteId');
