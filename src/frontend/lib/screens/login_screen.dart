@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:owlistic/viewmodel/login_viewmodel.dart';
 import 'package:owlistic/utils/logger.dart';
 import 'package:owlistic/widgets/app_logo.dart';
+import 'package:owlistic/config/app_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -45,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _serverUrlController.text = serverUrl;
     } else {
       // Default server URL if none is set
-      _serverUrlController.text = 'http://localhost:8080';
+      _serverUrlController.text = AppConfig.defaultServerUrl;
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:owlistic/utils/logger.dart';
 import 'package:owlistic/models/subscription.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:owlistic/config/app_config.dart';
 
 class WebSocketService {
   static final WebSocketService _instance = WebSocketService._internal();
@@ -206,7 +207,7 @@ class WebSocketService {
       }
       _logger.debug('Using WebSocket URL from server URL: $wsUrl');
     } else {
-      wsUrl = 'ws://localhost:8080/ws';
+      wsUrl = AppConfig.defaultServerUrl.replaceFirst('http', 'ws') + '/ws';
       _logger.warning('No server URL configured, using default: $wsUrl');
     }
     

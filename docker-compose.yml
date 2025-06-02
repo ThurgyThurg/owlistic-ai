@@ -35,6 +35,8 @@ services:
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
+      args:
+        - SERVER_URL=${SERVER_URL}
     ports:
       - "80:80"
     depends_on:

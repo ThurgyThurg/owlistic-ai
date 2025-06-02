@@ -4,6 +4,9 @@ FROM --platform=linux/$TARGETARCH debian:bullseye-slim AS build
 # Set ARG for platform targeting
 ARG TARGETARCH
 
+# Accept SERVER_URL as build argument
+ARG SERVER_URL=http://localhost:8080
+
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -40,8 +43,8 @@ RUN flutter pub get
 # Initialize web project (creates index.html if missing)
 RUN flutter create --platforms=web .
 
-# Build the web app with warning suppressed
-RUN flutter build web --release
+# Build the web app with SERVER_URL passed as dart-define
+RUN flutter build web --release --dart-define=SERVER_URL=${SERVER_URL}
 
 # Second stage: Serve the app with Nginx
 FROM --platform=linux/$TARGETARCH nginx:alpine
