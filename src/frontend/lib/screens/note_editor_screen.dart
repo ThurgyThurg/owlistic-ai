@@ -315,6 +315,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
             ),
             const Divider(),
+            // Add AI Enhancement Display
+            if (_noteId != null && _noteId!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: AIEnhancementDisplay(noteId: _noteId!),
+              ),
             Expanded(
               child: Stack(
                 children: [
