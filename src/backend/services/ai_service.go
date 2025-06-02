@@ -612,12 +612,12 @@ func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+ai.anthropicKey)
-	httpReq.Header.Set("anthropic-version", "2023-10-01")
+	httpReq.Header.Set("x-api-key", ai.anthropicKey)
+	httpReq.Header.Set("anthropic-version", "2023-06-01")
 
 	log.Printf("Sending request to Anthropic API...")
 	log.Printf("Request URL: %s", httpReq.URL)
-	log.Printf("Request headers: Content-Type=%s, Authorization=Bearer %s..., anthropic-version=%s", 
+	log.Printf("Request headers: Content-Type=%s, x-api-key=%s..., anthropic-version=%s", 
 		httpReq.Header.Get("Content-Type"),
 		ai.anthropicKey[:20],
 		httpReq.Header.Get("anthropic-version"))
