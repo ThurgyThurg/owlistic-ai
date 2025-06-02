@@ -330,39 +330,18 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 		return nil, fmt.Errorf("chroma base URL not configured")
 	}
 
-	// Create a temporary collection with embedding function to generate embeddings
-	tempCollectionName := fmt.Sprintf("temp_embedding_%d", time.Now().UnixNano())
+	// Ensure the note_embeddings collection exists with proper embedding function
+	if err := ai.ensureEmbeddingCollection(); err != nil {
+		return nil, fmt.Errorf("failed to ensure embedding collection: %w", err)
+	}
+
+	// Create a temporary document to get its embedding
+	tempDocID := fmt.Sprintf("temp_%d", time.Now().UnixNano())
 	
-	// Create collection with default embedding function
-	collectionPayload := map[string]interface{}{
-		"name": tempCollectionName,
-		"metadata": map[string]string{
-			"description": "Temporary collection for generating embeddings",
-		},
-		"embedding_function": "default",
-	}
-
-	collectionJSON, err := json.Marshal(collectionPayload)
-	if err != nil {
-		return nil, err
-	}
-
-	collectionReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections", bytes.NewBuffer(collectionJSON))
-	if err != nil {
-		return nil, err
-	}
-	collectionReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := ai.httpClient.Do(collectionReq)
-	if err != nil {
-		return nil, err
-	}
-	resp.Body.Close()
-
-	// Add document to get embedding
+	// Add document to collection (this will generate the embedding using Chroma's embedding function)
 	addPayload := map[string]interface{}{
 		"documents": []string{text[:min(8000, len(text))]},
-		"ids":       []string{"temp_doc"},
+		"ids":       []string{tempDocID},
 	}
 
 	addJSON, err := json.Marshal(addPayload)
@@ -370,7 +349,7 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 		return nil, err
 	}
 
-	addReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections/"+tempCollectionName+"/add", bytes.NewBuffer(addJSON))
+	addReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections/note_embeddings/add", bytes.NewBuffer(addJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -382,8 +361,18 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 	}
 	addResp.Body.Close()
 
-	// Get the document with embedding
-	getReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections/"+tempCollectionName+"/get", bytes.NewBuffer([]byte(`{"ids":["temp_doc"],"include":["embeddings"]}`)))
+	// Get the document with its embedding
+	getPayload := map[string]interface{}{
+		"ids":     []string{tempDocID},
+		"include": []string{"embeddings"},
+	}
+
+	getJSON, err := json.Marshal(getPayload)
+	if err != nil {
+		return nil, err
+	}
+
+	getReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections/note_embeddings/get", bytes.NewBuffer(getJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -403,17 +392,70 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 		return nil, err
 	}
 
-	// Clean up temporary collection
-	deleteReq, err := http.NewRequest("DELETE", ai.chromaBaseURL+"/api/v1/collections/"+tempCollectionName, nil)
+	// Clean up the temporary document
+	deletePayload := map[string]interface{}{
+		"ids": []string{tempDocID},
+	}
+	deleteJSON, _ := json.Marshal(deletePayload)
+	deleteReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections/note_embeddings/delete", bytes.NewBuffer(deleteJSON))
 	if err == nil {
+		deleteReq.Header.Set("Content-Type", "application/json")
 		ai.httpClient.Do(deleteReq)
 	}
 
-	if len(getResult.Embeddings) == 0 {
+	if len(getResult.Embeddings) == 0 || len(getResult.Embeddings[0]) == 0 {
 		return nil, fmt.Errorf("no embedding data returned from Chroma")
 	}
 
 	return getResult.Embeddings[0], nil
+}
+
+// ensureEmbeddingCollection creates the note_embeddings collection if it doesn't exist
+func (ai *AIService) ensureEmbeddingCollection() error {
+	// Try to get the collection first
+	getReq, err := http.NewRequest("GET", ai.chromaBaseURL+"/api/v1/collections/note_embeddings", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := ai.httpClient.Do(getReq)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+
+	// If collection exists (status 200), return success
+	if resp.StatusCode == 200 {
+		return nil
+	}
+
+	// Create collection with default embedding function (all-MiniLM-L6-v2)
+	collectionPayload := map[string]interface{}{
+		"name": "note_embeddings",
+		"metadata": map[string]string{
+			"description": "Embeddings for note similarity search",
+		},
+		// Chroma will use the default all-MiniLM-L6-v2 embedding function
+	}
+
+	collectionJSON, err := json.Marshal(collectionPayload)
+	if err != nil {
+		return err
+	}
+
+	collectionReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections", bytes.NewBuffer(collectionJSON))
+	if err != nil {
+		return err
+	}
+	collectionReq.Header.Set("Content-Type", "application/json")
+
+	createResp, err := ai.httpClient.Do(collectionReq)
+	if err != nil {
+		return err
+	}
+	createResp.Body.Close()
+
+	return nil
 }
 
 func (ai *AIService) findRelatedNotes(ctx context.Context, embedding []float64, excludeID uuid.UUID) ([]uuid.UUID, error) {
