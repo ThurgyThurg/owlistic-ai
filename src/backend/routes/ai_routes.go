@@ -107,7 +107,7 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 	}
 
 	var aiNote models.AIEnhancedNote
-	if err := ar.db.Preload("Note").Where("note_id = ? AND user_id = ?", noteID, userID).First(&aiNote).Error; err != nil {
+	if err := ar.db.Where("id = ? AND user_id = ?", noteID, userID).First(&aiNote).Error; err != nil {
 		// Return regular note if AI enhancement doesn't exist
 		var note models.Note
 		if err := ar.db.Where("id = ? AND user_id = ?", noteID, userID).First(&note).Error; err != nil {
@@ -116,7 +116,10 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 		}
 		
 		// Trigger AI processing
-		go ar.aiService.ProcessNoteWithAI(c.Request.Context(), noteID)
+		go func() {
+			ctx := context.Background()
+			ar.aiService.ProcessNoteWithAI(ctx, noteID)
+		}()
 		
 		c.JSON(http.StatusOK, gin.H{
 			"note": note,
