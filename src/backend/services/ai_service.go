@@ -526,6 +526,11 @@ Learning Items:`, title, content[:min(1000, len(content))])
 
 // addAIInsightsToNote adds action steps and learning items as blocks to the note
 func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, actionSteps, learningItems []string) error {
+	// Get the note to retrieve the user ID
+	var note models.Note
+	if err := ai.db.WithContext(ctx).First(&note, noteID).Error; err != nil {
+		return fmt.Errorf("failed to find note: %w", err)
+	}
 	// Check if AI insights already exist in the note to avoid duplicates
 	var existingBlocks []models.Block
 	if err := ai.db.WithContext(ctx).Where("note_id = ? AND (content->>'text' LIKE ? OR content->>'text' LIKE ?)", 
@@ -540,7 +545,7 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 	}
 
 	// Get the current highest order number for blocks in this note
-	var maxOrder int
+	var maxOrder float64
 	if err := ai.db.WithContext(ctx).Model(&models.Block{}).
 		Where("note_id = ?", noteID).
 		Select("COALESCE(MAX(\"order\"), 0)").
@@ -554,6 +559,7 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 	if len(actionSteps) > 0 {
 		// Add header block
 		headerBlock := models.Block{
+			UserID:  note.UserID,
 			NoteID:  noteID,
 			Type:    "heading",
 			Order:   currentOrder,
@@ -570,6 +576,7 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 		// Add each action step as a task block
 		for i, step := range actionSteps {
 			stepBlock := models.Block{
+				UserID: note.UserID,
 				NoteID: noteID,
 				Type:   "task",
 				Order:  currentOrder,
@@ -589,6 +596,7 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 	if len(learningItems) > 0 {
 		// Add header block
 		headerBlock := models.Block{
+			UserID:  note.UserID,
 			NoteID:  noteID,
 			Type:    "heading",
 			Order:   currentOrder,
@@ -605,6 +613,7 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 		// Add each learning item as a bullet point
 		for _, item := range learningItems {
 			itemBlock := models.Block{
+				UserID: note.UserID,
 				NoteID: noteID,
 				Type:   "bulleted-list",
 				Order:  currentOrder,
