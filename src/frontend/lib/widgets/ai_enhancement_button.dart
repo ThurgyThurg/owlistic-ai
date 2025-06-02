@@ -255,7 +255,19 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
       return const SizedBox.shrink();
     }
 
-    final aiEnhancement = _enhancementData?['ai_enhancement'];
+    // Safely access the ai_enhancement data with proper null checking
+    // Handle both old and new data formats
+    dynamic aiEnhancement;
+    if (_enhancementData != null) {
+      // Check if data has the new nested structure
+      if (_enhancementData!.containsKey('ai_enhancement')) {
+        aiEnhancement = _enhancementData!['ai_enhancement'];
+      } else if (_enhancementData!.containsKey('summary') || _enhancementData!.containsKey('ai_tags')) {
+        // Old format - data is directly in the root
+        aiEnhancement = _enhancementData;
+      }
+    }
+    
     if (aiEnhancement == null) {
       return Card(
         child: Padding(
@@ -329,7 +341,8 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               Wrap(
                 spacing: 8.0,
                 runSpacing: 4.0,
-                children: (aiEnhancement['ai_tags'] as List)
+                children: (aiEnhancement['ai_tags'] as List? ?? [])
+                    .where((tag) => tag != null)
                     .map<Widget>((tag) => Chip(
                           label: Text(tag.toString()),
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -350,7 +363,9 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               const SizedBox(height: 4),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: (aiEnhancement['action_steps'] as List)
+                children: (aiEnhancement['action_steps'] as List? ?? [])
+                    .where((step) => step != null && step.toString().isNotEmpty)
+                    .toList()
                     .asMap()
                     .entries
                     .map<Widget>((entry) => Padding(
@@ -402,7 +417,8 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               const SizedBox(height: 4),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: (aiEnhancement['learning_items'] as List)
+                children: (aiEnhancement['learning_items'] as List? ?? [])
+                    .where((item) => item != null && item.toString().isNotEmpty)
                     .map<Widget>((item) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 2.0),
                           child: Row(
@@ -438,7 +454,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${(aiEnhancement['related_note_ids'] as List).length} related notes found',
+                '${(aiEnhancement['related_note_ids'] as List? ?? []).length} related notes found',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

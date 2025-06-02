@@ -221,6 +221,12 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 		}
 	}
 
+	// Add action steps and learning items as blocks to the note
+	if err := ai.addAIInsightsToNote(ctx, noteID, actionSteps, learningItems); err != nil {
+		log.Printf("Failed to add AI insights to note: %v", err)
+		// Don't fail the whole process if this fails
+	}
+
 	// Save AI enhancement
 	return ai.db.WithContext(ctx).Save(&aiNote).Error
 }
@@ -516,6 +522,104 @@ Learning Items:`, title, content[:min(1000, len(content))])
 	}
 
 	return items, nil
+}
+
+// addAIInsightsToNote adds action steps and learning items as blocks to the note
+func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, actionSteps, learningItems []string) error {
+	// Check if AI insights already exist in the note to avoid duplicates
+	var existingBlocks []models.Block
+	if err := ai.db.WithContext(ctx).Where("note_id = ? AND (content->>'text' LIKE ? OR content->>'text' LIKE ?)", 
+		noteID, "%## 🎯 Action Steps%", "%## 💡 Learning Opportunities%").Find(&existingBlocks).Error; err != nil {
+		return fmt.Errorf("failed to check for existing AI insights: %w", err)
+	}
+
+	// If AI insights already exist, don't add them again
+	if len(existingBlocks) > 0 {
+		log.Printf("AI insights already exist for note %s, skipping", noteID)
+		return nil
+	}
+
+	// Get the current highest order number for blocks in this note
+	var maxOrder int
+	if err := ai.db.WithContext(ctx).Model(&models.Block{}).
+		Where("note_id = ?", noteID).
+		Select("COALESCE(MAX(\"order\"), 0)").
+		Scan(&maxOrder).Error; err != nil {
+		return fmt.Errorf("failed to get max order: %w", err)
+	}
+
+	currentOrder := maxOrder + 1
+
+	// Add Action Steps section if we have any
+	if len(actionSteps) > 0 {
+		// Add header block
+		headerBlock := models.Block{
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   currentOrder,
+			Content: map[string]interface{}{
+				"text":  "## 🎯 Action Steps",
+				"level": 2,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&headerBlock).Error; err != nil {
+			return fmt.Errorf("failed to create action steps header: %w", err)
+		}
+		currentOrder++
+
+		// Add each action step as a task block
+		for i, step := range actionSteps {
+			stepBlock := models.Block{
+				NoteID: noteID,
+				Type:   "task",
+				Order:  currentOrder,
+				Content: map[string]interface{}{
+					"text":      fmt.Sprintf("%d. %s", i+1, step),
+					"completed": false,
+				},
+			}
+			if err := ai.db.WithContext(ctx).Create(&stepBlock).Error; err != nil {
+				return fmt.Errorf("failed to create action step block: %w", err)
+			}
+			currentOrder++
+		}
+	}
+
+	// Add Learning Opportunities section if we have any
+	if len(learningItems) > 0 {
+		// Add header block
+		headerBlock := models.Block{
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   currentOrder,
+			Content: map[string]interface{}{
+				"text":  "## 💡 Learning Opportunities",
+				"level": 2,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&headerBlock).Error; err != nil {
+			return fmt.Errorf("failed to create learning opportunities header: %w", err)
+		}
+		currentOrder++
+
+		// Add each learning item as a bullet point
+		for _, item := range learningItems {
+			itemBlock := models.Block{
+				NoteID: noteID,
+				Type:   "bulleted-list",
+				Order:  currentOrder,
+				Content: map[string]interface{}{
+					"text": item,
+				},
+			}
+			if err := ai.db.WithContext(ctx).Create(&itemBlock).Error; err != nil {
+				return fmt.Errorf("failed to create learning item block: %w", err)
+			}
+			currentOrder++
+		}
+	}
+
+	return nil
 }
 
 func min(a, b int) int {
