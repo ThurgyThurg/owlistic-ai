@@ -9,40 +9,22 @@ import (
 
 // CORSMiddleware adds the required headers to allow cross-origin requests
 func CORSMiddleware(AppOrigins string) gin.HandlerFunc {
-
-	// Set up CORS configuration
-	corsConfig := cors.DefaultConfig()
-	
-	// Split and clean up origins
-	origins := strings.Split(AppOrigins, ",")
-	for i, origin := range origins {
-		origins[i] = strings.TrimSpace(origin)
-	}
-	
-	corsConfig.AllowOrigins = origins
-	corsConfig.AllowWildcard = true
-	corsConfig.AllowWebSockets = true
-	corsConfig.AllowCredentials = true
-	corsConfig.AllowMethods = []string{
-		"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
-	}
-	corsConfig.AllowHeaders = []string{
-		"Accept",
-		"Authorization",
-		"Content-Type",
-		"Content-Length",
-		"Accept-Encoding",
-		"X-CSRF-Token",
-		"X-Requested-With",
-		"Origin",
-		"Cache-Control",
-		"X-File-Name",
-	}
-	corsConfig.ExposeHeaders = []string{
-		"Content-Length",
-		"Content-Type",
-	}
-	corsConfig.MaxAge = 12 * 60 * 60 // 12 hours
-
-	return cors.New(corsConfig)
+	return gin.HandlerFunc(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		
+		// Allow all origins for now - can be restricted later
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, X-Requested-With, Origin, Cache-Control, X-File-Name")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+		c.Header("Access-Control-Max-Age", "43200") // 12 hours
+		
+		// Handle preflight requests
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		
+		c.Next()
+	})
 }
