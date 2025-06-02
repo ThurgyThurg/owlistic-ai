@@ -255,7 +255,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
       return const SizedBox.shrink();
     }
 
-    final aiEnhancement = _enhancementData!['ai_enhancement'];
+    final aiEnhancement = _enhancementData?['ai_enhancement'];
     if (aiEnhancement == null) {
       return Card(
         child: Padding(
@@ -306,17 +306,19 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ],
             ),
             
-            if (aiEnhancement['summary'] != null) ...[
+            if (aiEnhancement is Map && aiEnhancement['summary'] != null) ...[
               const SizedBox(height: 12),
               Text(
                 'Summary',
                 style: Theme.of(context).textTheme.labelMedium,
               ),
               const SizedBox(height: 4),
-              Text(aiEnhancement['summary']),
+              Text(aiEnhancement['summary'].toString()),
             ],
 
-            if (aiEnhancement['ai_tags'] != null && 
+            if (aiEnhancement is Map && 
+                aiEnhancement['ai_tags'] != null && 
+                aiEnhancement['ai_tags'] is List &&
                 (aiEnhancement['ai_tags'] as List).isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
@@ -336,7 +338,9 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
             ],
 
-            if (aiEnhancement['related_note_ids'] != null &&
+            if (aiEnhancement is Map &&
+                aiEnhancement['related_note_ids'] != null &&
+                aiEnhancement['related_note_ids'] is List &&
                 (aiEnhancement['related_note_ids'] as List).isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
@@ -350,7 +354,7 @@ class _AIEnhancementDisplayState extends State<AIEnhancementDisplay> {
               ),
             ],
 
-            if (aiEnhancement['processing_status'] != null) ...[
+            if (aiEnhancement is Map && aiEnhancement['processing_status'] != null) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
