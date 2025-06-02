@@ -15,7 +15,7 @@ type Event struct {
 	Timestamp    time.Time       `gorm:"not null" json:"timestamp"`
 	Data         json.RawMessage `gorm:"type:jsonb;not null" json:"data"`
 	Status       string          `gorm:"not null;default:'pending'" json:"status"`
-	Dispatched   bool            `gorm:"not null;default:false" json:"dispatched"`
+	Dispatched   bool            `gorm:"not null;default:false;index" json:"dispatched"`
 	DispatchedAt *time.Time      `json:"dispatched_at,omitempty"`
 }
 

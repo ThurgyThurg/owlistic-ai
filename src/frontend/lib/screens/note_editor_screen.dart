@@ -6,6 +6,7 @@ import 'package:owlistic/utils/logger.dart';
 import 'package:owlistic/widgets/app_bar_common.dart';
 import 'package:owlistic/viewmodel/note_editor_viewmodel.dart';
 import 'package:owlistic/widgets/theme_switcher.dart';
+import 'package:owlistic/widgets/ai_enhancement_button.dart';
 
 class NoteEditorScreen extends StatefulWidget {
   final String? noteId;
@@ -217,6 +218,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         title: '', // Empty title as we have our own title field
         showBackButton: false, // No back button in app bar
         actions: [
+          if (_noteId != null && _noteId!.isNotEmpty)
+            AIEnhancementButton(
+              noteId: _noteId!,
+              onProcessingComplete: () {
+                // Refresh the note content after AI processing
+                _noteEditorViewModel.fetchBlocksForNote(_noteId!, refresh: true);
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Refresh note content',
