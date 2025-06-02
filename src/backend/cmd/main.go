@@ -106,8 +106,8 @@ func main() {
 	routes.RegisterWebSocketRoutes(wsGroup, webSocketService)
 
 	// Register AI routes
-	aiRoutes := routes.NewAIRoutes(db)
-	aiRoutes.RegisterRoutes(protectedGroup)
+	aiRoutes := routes.NewAIRoutes(db.DB)
+	aiRoutes.RegisterRoutes(router)
 
 	// Register debug routes for monitoring events
 	routes.SetupDebugRoutes(router, db)
