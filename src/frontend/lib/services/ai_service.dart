@@ -19,7 +19,11 @@ class AIService extends BaseService {
         body: jsonEncode({}),
       ).timeout(const Duration(minutes: 2));
       
-      _validateResponse(response, 'POST', uri.toString());
+      // Check status and throw error if not successful
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
+      
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       
       _logger.info('AI processing started for note $noteId');
