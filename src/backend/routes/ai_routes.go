@@ -115,17 +115,12 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 			return
 		}
 		
-		// Trigger AI processing
-		go func() {
-			ctx := context.Background()
-			ar.aiService.ProcessNoteWithAI(ctx, noteID)
-		}()
 		
 		c.JSON(http.StatusOK, gin.H{
 			"note": note,
 			"ai_enhancement": gin.H{
-				"processing_status": "pending",
-				"message": "AI processing started",
+				"processing_status": "not_processed",
+				"message": "AI enhancement not available",
 			},
 		})
 		return
