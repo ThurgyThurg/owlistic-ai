@@ -41,6 +41,8 @@ services:
       - "80:80"
     depends_on:
       - owlistic
+    networks:
+      - server
 
   postgres:
     image: postgres:15
