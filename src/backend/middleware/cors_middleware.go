@@ -1,17 +1,12 @@
 package middleware
 
 import (
-	"strings"
-
-	"github.com/gin-contrib/cors"
 	gin "github.com/gin-gonic/gin"
 )
 
 // CORSMiddleware adds the required headers to allow cross-origin requests
 func CORSMiddleware(AppOrigins string) gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
-		origin := c.Request.Header.Get("Origin")
-		
 		// Allow all origins for now - can be restricted later
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS")
