@@ -440,7 +440,23 @@ func (ai *AIService) createEmbeddingWithChroma(text string) ([]float64, error) {
 func (ai *AIService) ensureEmbeddingCollection() error {
 	log.Printf("Checking if note_embeddings collection exists...")
 	
-	// Try to get the collection first
+	// First, let's try to list all collections to see what endpoint works
+	listReq, err := http.NewRequest("GET", ai.chromaBaseURL+"/api/v1/collections", nil)
+	if err != nil {
+		log.Printf("Failed to create collections list request: %v", err)
+		return err
+	}
+
+	listResp, err := ai.httpClient.Do(listReq)
+	if err != nil {
+		log.Printf("Failed to list collections: %v", err)
+		return err
+	}
+	defer listResp.Body.Close()
+	
+	log.Printf("Collections list response status: %d", listResp.StatusCode)
+
+	// Try to get the specific collection
 	getReq, err := http.NewRequest("GET", ai.chromaBaseURL+"/api/v1/collections/note_embeddings", nil)
 	if err != nil {
 		log.Printf("Failed to create collection check request: %v", err)
@@ -477,6 +493,8 @@ func (ai *AIService) ensureEmbeddingCollection() error {
 		return err
 	}
 
+	log.Printf("Attempting to create collection with payload: %s", string(collectionJSON))
+
 	collectionReq, err := http.NewRequest("POST", ai.chromaBaseURL+"/api/v1/collections", bytes.NewBuffer(collectionJSON))
 	if err != nil {
 		log.Printf("Failed to create collection request: %v", err)
@@ -491,9 +509,13 @@ func (ai *AIService) ensureEmbeddingCollection() error {
 	}
 	defer createResp.Body.Close()
 
+	log.Printf("Collection creation response status: %d", createResp.StatusCode)
+	
 	if createResp.StatusCode != 200 && createResp.StatusCode != 201 {
-		log.Printf("Collection creation failed with status: %d", createResp.StatusCode)
-		return fmt.Errorf("collection creation failed with status: %d", createResp.StatusCode)
+		// Read the response body to see what the error is
+		bodyBytes, _ := io.ReadAll(createResp.Body)
+		log.Printf("Collection creation error response: %s", string(bodyBytes))
+		return fmt.Errorf("collection creation failed with status: %d: %s", createResp.StatusCode, string(bodyBytes))
 	}
 
 	log.Printf("Successfully created note_embeddings collection")
@@ -536,6 +558,11 @@ func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens
 	if ai.anthropicKey == "" {
 		log.Printf("ERROR: Anthropic API key is empty")
 		return "", fmt.Errorf("anthropic API key not configured")
+	}
+	
+	// Debug: Log the API key format (first and last few characters only for security)
+	if len(ai.anthropicKey) > 10 {
+		log.Printf("API key format: %s...%s (length: %d)", ai.anthropicKey[:8], ai.anthropicKey[len(ai.anthropicKey)-4:], len(ai.anthropicKey))
 	}
 
 	req := AnthropicRequest{
