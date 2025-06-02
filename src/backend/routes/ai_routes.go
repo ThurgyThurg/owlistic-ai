@@ -131,7 +131,16 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, aiNote)
+	c.JSON(http.StatusOK, gin.H{
+		"note": aiNote.Note,
+		"ai_enhancement": gin.H{
+			"summary":            aiNote.Summary,
+			"ai_tags":           aiNote.AITags,
+			"related_note_ids":  aiNote.RelatedNoteIDs,
+			"processing_status": aiNote.ProcessingStatus,
+			"last_processed_at": aiNote.LastProcessedAt,
+		},
+	})
 }
 
 // semanticSearch performs AI-powered semantic search
