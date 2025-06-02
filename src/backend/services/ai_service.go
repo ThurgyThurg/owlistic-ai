@@ -84,7 +84,7 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 	// Generate title if empty
 	go func() {
 		if note.Title == "" {
-			title, err := ai.generateTitle(content)
+			title, err := ai.generateTitle(ctx, content)
 			if err != nil {
 				errChan <- err
 				return
@@ -97,7 +97,7 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 
 	// Generate summary
 	go func() {
-		summary, err := ai.generateSummary(content)
+		summary, err := ai.generateSummary(ctx, content)
 		if err != nil {
 			errChan <- err
 			return
@@ -107,7 +107,7 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 
 	// Extract tags
 	go func() {
-		tags, err := ai.extractTags(content, note.Title)
+		tags, err := ai.extractTags(ctx, content, note.Title)
 		if err != nil {
 			errChan <- err
 			return
@@ -130,23 +130,36 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 	var summary string
 	var aiTags []string
 	var embeddings []float64
+	
+	completed := 0
+	errors := 0
 
-	for i := 0; i < 4; i++ {
+	for completed < 4 {
 		select {
 		case title := <-titleChan:
 			finalTitle = title
+			completed++
 		case s := <-summaryChan:
 			summary = s
+			completed++
 		case tags := <-tagsChan:
 			aiTags = tags
+			completed++
 		case emb := <-embeddingChan:
 			embeddings = emb
+			completed++
 		case err := <-errChan:
 			log.Printf("AI processing error: %v", err)
-			// Continue with partial results
+			errors++
+			completed++ // Count error as completed to avoid infinite loop
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+	}
+	
+	// If all operations failed, return error
+	if errors >= 4 {
+		return fmt.Errorf("all AI processing operations failed")
 	}
 
 	// Update or create AI-enhanced note record
@@ -198,14 +211,14 @@ func (ai *AIService) extractNoteContent(note *models.Note) string {
 	return content.String()
 }
 
-func (ai *AIService) generateTitle(content string) (string, error) {
+func (ai *AIService) generateTitle(ctx context.Context, content string) (string, error) {
 	prompt := fmt.Sprintf(`Generate a concise, descriptive title (max 10 words) for this content:
 
 %s
 
 Title:`, content[:min(500, len(content))])
 
-	response, err := ai.callAnthropic(prompt, 50)
+	response, err := ai.callAnthropic(ctx, prompt, 50)
 	if err != nil {
 		return "", err
 	}
@@ -218,7 +231,7 @@ Title:`, content[:min(500, len(content))])
 	return title, nil
 }
 
-func (ai *AIService) generateSummary(content string) (string, error) {
+func (ai *AIService) generateSummary(ctx context.Context, content string) (string, error) {
 	if len(content) < 200 {
 		return content, nil
 	}
@@ -229,10 +242,10 @@ func (ai *AIService) generateSummary(content string) (string, error) {
 
 Summary:`, content)
 
-	return ai.callAnthropic(prompt, 150)
+	return ai.callAnthropic(ctx, prompt, 150)
 }
 
-func (ai *AIService) extractTags(content, title string) ([]string, error) {
+func (ai *AIService) extractTags(ctx context.Context, content, title string) ([]string, error) {
 	prompt := fmt.Sprintf(`Extract 3-7 relevant tags from this content. Tags should be:
 - Single words or short phrases (2-3 words max)
 - Lowercase
@@ -245,7 +258,7 @@ Return only the tags as a JSON array. Example: ["productivity", "machine learnin
 
 Tags:`, title, content[:min(800, len(content))])
 
-	response, err := ai.callAnthropic(prompt, 100)
+	response, err := ai.callAnthropic(ctx, prompt, 100)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +327,7 @@ func (ai *AIService) findRelatedNotes(ctx context.Context, embedding []float64, 
 	return []uuid.UUID{}, nil
 }
 
-func (ai *AIService) callAnthropic(prompt string, maxTokens int) (string, error) {
+func (ai *AIService) callAnthropic(ctx context.Context, prompt string, maxTokens int) (string, error) {
 	req := AnthropicRequest{
 		Model:     "claude-3-5-sonnet-20241022",
 		MaxTokens: maxTokens,
@@ -328,7 +341,7 @@ func (ai *AIService) callAnthropic(prompt string, maxTokens int) (string, error)
 		return "", err
 	}
 
-	httpReq, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
