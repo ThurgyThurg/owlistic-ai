@@ -345,7 +345,7 @@ func (ai *AIService) callAnthropic(prompt string, maxTokens int) (string, error)
 
 	var anthropicResp AnthropicResponse
 	if err := json.NewDecoder(resp.Body).Decode(&anthropicResp); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if len(anthropicResp.Content) == 0 {
