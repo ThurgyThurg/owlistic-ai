@@ -23,6 +23,7 @@ class AIEnhancementButton extends StatefulWidget {
 
 class _AIEnhancementButtonState extends State<AIEnhancementButton>
     with SingleTickerProviderStateMixin {
+  final Logger _logger = Logger('AIEnhancementButton');
   bool _isProcessing = false;
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -79,7 +80,7 @@ class _AIEnhancementButtonState extends State<AIEnhancementButton>
         widget.onProcessingComplete?.call();
       }
     } catch (e) {
-      Logger.log('AI processing failed: $e');
+      _logger.error('AI processing failed: $e');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
