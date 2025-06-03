@@ -821,8 +821,28 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 		}
 		currentOrder++
 
-		// Add each action step as a task block
+		// Add each action step as a task block and create actual tasks
 		for i, step := range actionSteps {
+			// Create the actual task in the tasks table
+			task, err := ai.createAITask(
+				ctx,
+				note.UserID,
+				noteID,
+				step,
+				fmt.Sprintf("AI-generated action step from note: %s", note.Title),
+				"ai_action_steps",
+				map[string]interface{}{
+					"step_number": i + 1,
+					"note_title":  note.Title,
+				},
+			)
+			if err != nil {
+				log.Printf("Failed to create task for action step: %v", err)
+				// Continue with block creation even if task creation fails
+				task = &models.Task{ID: uuid.New()} // Fallback for block linking
+			}
+
+			// Create the task block with reference to the created task
 			stepBlock := models.Block{
 				UserID: note.UserID,
 				NoteID: noteID,
@@ -831,6 +851,7 @@ func (ai *AIService) addAIInsightsToNote(ctx context.Context, noteID uuid.UUID, 
 				Content: map[string]interface{}{
 					"text":      fmt.Sprintf("%d. %s", i+1, step),
 					"completed": false,
+					"task_id":   task.ID.String(), // Link to the actual task
 				},
 			}
 			if err := ai.db.WithContext(ctx).Create(&stepBlock).Error; err != nil {
@@ -1400,8 +1421,29 @@ func (ai *AIService) createStepBlocks(ctx context.Context, noteID, userID uuid.U
 		}
 		order++
 
-		for _, deliverable := range deliverables {
+		for i, deliverable := range deliverables {
 			if deliverableStr, ok := deliverable.(string); ok {
+				// Create the actual task in the tasks table
+				task, err := ai.createAITask(
+					ctx,
+					userID,
+					noteID,
+					deliverableStr,
+					fmt.Sprintf("Project deliverable from step: %s", stepData["title"]),
+					"project_deliverable",
+					map[string]interface{}{
+						"deliverable_number": i + 1,
+						"step_title":         stepData["title"],
+						"step_number":        stepData["step_number"],
+					},
+				)
+				if err != nil {
+					log.Printf("Failed to create task for deliverable: %v", err)
+					// Continue with block creation even if task creation fails
+					task = &models.Task{ID: uuid.New()} // Fallback for block linking
+				}
+
+				// Create the task block with reference to the created task
 				block := models.Block{
 					UserID:  userID,
 					NoteID:  noteID,
@@ -1410,6 +1452,7 @@ func (ai *AIService) createStepBlocks(ctx context.Context, noteID, userID uuid.U
 					Content: map[string]interface{}{
 						"text":      deliverableStr,
 						"completed": false,
+						"task_id":   task.ID.String(), // Link to the actual task
 					},
 				}
 				if err := ai.db.WithContext(ctx).Create(&block).Error; err != nil {
@@ -1486,6 +1529,34 @@ func (ai *AIService) createStepBlocks(ctx context.Context, noteID, userID uuid.U
 	}
 
 	return nil
+}
+
+// createAITask creates a task with AI-generated metadata
+func (ai *AIService) createAITask(ctx context.Context, userID, noteID uuid.UUID, title, description, source string, metadata map[string]interface{}) (*models.Task, error) {
+	// Merge provided metadata with AI defaults
+	taskMetadata := map[string]interface{}{
+		"ai_generated": true,
+		"source":       source,
+		"created_by":   "ai_service",
+	}
+	for k, v := range metadata {
+		taskMetadata[k] = v
+	}
+
+	task := models.Task{
+		UserID:      userID,
+		NoteID:      noteID,
+		Title:       title,
+		Description: description,
+		IsCompleted: false,
+		Metadata:    taskMetadata,
+	}
+
+	if err := ai.db.WithContext(ctx).Create(&task).Error; err != nil {
+		return nil, fmt.Errorf("failed to create AI task: %w", err)
+	}
+
+	return &task, nil
 }
 
 func min(a, b int) int {
