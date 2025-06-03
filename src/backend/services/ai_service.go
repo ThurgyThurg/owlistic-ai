@@ -1622,7 +1622,7 @@ func (ai *AIService) SearchWithPerplexica(ctx context.Context, userID uuid.UUID,
 					"metadata":     source.Metadata,
 				}
 			}
-			searchRecord.Sources = sourcesData
+			searchRecord.Sources = models.AIMetadata{"sources": sourcesData}
 		} else {
 			searchRecord.ErrorMessage = result.Error
 		}
