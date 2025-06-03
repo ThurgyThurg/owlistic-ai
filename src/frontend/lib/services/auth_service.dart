@@ -455,7 +455,7 @@ class AuthService extends BaseService {
       // For single-user mode, fetch the actual user from the backend
       // Use the dedicated current user endpoint
       final response = await http.get(
-        Uri.parse('${await _getServerUrl()}/api/v1/users/current'),
+        Uri.parse('${AppConfig.serverUrl}/api/v1/users/current'),
         headers: {
           'Content-Type': 'application/json',
           if (_token != null) 'Authorization': 'Bearer $_token',
