@@ -779,30 +779,106 @@ func (ai *AIService) extractLearningItems(ctx context.Context, content, title st
 
 // BreakDownTask breaks down a complex task into smaller actionable steps
 func (ai *AIService) BreakDownTask(ctx context.Context, title string, description string, maxSteps int) (map[string]interface{}, error) {
-	prompt := fmt.Sprintf("Break down this project into %d actionable steps. Return as JSON with a 'steps' array:\n\nTitle: %s\nDescription: %s", maxSteps, title, description)
+	prompt := fmt.Sprintf(`You are a project management AI. Break down the following goal into %d actionable steps.
+
+Goal: %s
+Context: %s
+
+Please return ONLY a valid JSON object in this exact format:
+{
+  "goal": "%s",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Step Title",
+      "description": "Detailed description of what to do"
+    },
+    {
+      "step": 2,
+      "title": "Step Title",
+      "description": "Detailed description of what to do"
+    }
+  ]
+}
+
+Return only the JSON, no additional text or formatting.`, maxSteps, title, description, title)
 	
 	response, err := ai.GenerateResponse(ctx, prompt, nil)
 	if err != nil {
 		return nil, err
 	}
 	
-	// Parse the response into steps
-	lines := strings.Split(response, "\n")
-	var steps []interface{}
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
-			steps = append(steps, trimmed)
+	// Clean the response - remove any markdown formatting
+	response = strings.TrimSpace(response)
+	response = strings.TrimPrefix(response, "```json")
+	response = strings.TrimPrefix(response, "```")
+	response = strings.TrimSuffix(response, "```")
+	response = strings.TrimSpace(response)
+	
+	// Try to parse as JSON first
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(response), &result); err != nil {
+		// If JSON parsing fails, fall back to manual parsing
+		log.Printf("Failed to parse AI response as JSON: %v. Response: %s", err, response)
+		
+		// Parse the response into steps manually
+		lines := strings.Split(response, "\n")
+		var steps []map[string]interface{}
+		stepNum := 1
+		
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" && !strings.HasPrefix(trimmed, "#") && !strings.Contains(trimmed, "{") && !strings.Contains(trimmed, "}") {
+				steps = append(steps, map[string]interface{}{
+					"step":        stepNum,
+					"title":       fmt.Sprintf("Step %d", stepNum),
+					"description": trimmed,
+				})
+				stepNum++
+				if stepNum > maxSteps {
+					break
+				}
+			}
+		}
+		
+		// Return a properly structured result
+		return map[string]interface{}{
+			"goal":        title,
+			"steps":       steps,
+			"max_steps":   maxSteps,
+		}, nil
+	}
+	
+	// Validate and ensure proper structure
+	if _, exists := result["goal"]; !exists {
+		result["goal"] = title
+	}
+	if _, exists := result["max_steps"]; !exists {
+		result["max_steps"] = maxSteps
+	}
+	
+	// Ensure steps is an array of objects, not strings
+	if stepsData, exists := result["steps"]; exists {
+		if stepsArray, ok := stepsData.([]interface{}); ok {
+			var properSteps []map[string]interface{}
+			for i, step := range stepsArray {
+				if stepMap, ok := step.(map[string]interface{}); ok {
+					// Already a proper object
+					properSteps = append(properSteps, stepMap)
+				} else if stepStr, ok := step.(string); ok {
+					// Convert string to proper step object
+					properSteps = append(properSteps, map[string]interface{}{
+						"step":        i + 1,
+						"title":       fmt.Sprintf("Step %d", i+1),
+						"description": stepStr,
+					})
+				}
+			}
+			result["steps"] = properSteps
 		}
 	}
 	
-	// Return a structure that matches what the telegram service expects
-	return map[string]interface{}{
-		"title":       title,
-		"description": description,
-		"steps":       steps,
-		"max_steps":   maxSteps,
-	}, nil
+	return result, nil
 }
 
 // CreateProjectNotebook creates a notebook structure for a project using AI

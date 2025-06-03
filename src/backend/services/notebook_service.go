@@ -49,11 +49,14 @@ func (s *NotebookService) CreateNotebook(db *database.Database, notebookData map
 	var userCount int64
 	if err := tx.Model(&models.User{}).Where("id = ?", userID).Count(&userCount).Error; err != nil {
 		tx.Rollback()
+		log.Printf("Error counting users for ID %s: %v", userID.String(), err)
 		return models.Notebook{}, err
 	}
 
+	log.Printf("User count check for ID %s: found %d users", userID.String(), userCount)
 	if userCount == 0 {
 		tx.Rollback()
+		log.Printf("User not found, rolling back transaction for user ID: %s", userID.String())
 		return models.Notebook{}, ErrUserNotFound
 	}
 
