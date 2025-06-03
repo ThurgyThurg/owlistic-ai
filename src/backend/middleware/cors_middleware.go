@@ -16,7 +16,7 @@ func CORSMiddleware(AppOrigins string) gin.HandlerFunc {
 		
 		// Handle preflight requests
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
+			c.AbortWithStatus(200)
 			return
 		}
 		
