@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../viewmodel/theme_viewmodel.dart';
+import '../viewmodel/settings_viewmodel.dart';
 import '../widgets/app_bar_common.dart';
 import '../widgets/card_container.dart';
 
@@ -50,12 +51,10 @@ class SettingsScreen extends StatelessWidget {
                     leading: const Icon(Icons.notifications),
                     title: const Text('Notifications'),
                     subtitle: const Text('Manage notification preferences'),
-                    trailing: Switch(
-                      value: true,
-                      onChanged: (value) {
-                        // TODO: Implement notification settings
-                      },
-                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      _showNotificationSettingsDialog(context);
+                    },
                   ),
                 ],
               ),
@@ -165,6 +164,102 @@ class SettingsScreen extends StatelessWidget {
       children: const [
         Text('A powerful note-taking app with AI-powered features.'),
       ],
+    );
+  }
+
+  void _showNotificationSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ChangeNotifierProvider(
+        create: (_) => SettingsViewModel(),
+        child: Consumer<SettingsViewModel>(
+          builder: (context, viewModel, child) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.notifications),
+                  SizedBox(width: 8),
+                  Text('Notification Settings'),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (viewModel.isLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else ...[
+                      if (viewModel.errorMessage != null)
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            viewModel.errorMessage!,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      SwitchListTile(
+                        title: const Text('Enable Notifications'),
+                        subtitle: const Text('Receive all app notifications'),
+                        value: viewModel.notificationsEnabled,
+                        onChanged: (value) {
+                          viewModel.toggleNotifications(value);
+                        },
+                      ),
+                      const Divider(),
+                      SwitchListTile(
+                        title: const Text('Note Reminders'),
+                        subtitle: const Text('Get reminded about important notes'),
+                        value: viewModel.noteReminders,
+                        onChanged: viewModel.notificationsEnabled
+                            ? (value) {
+                                viewModel.toggleNoteReminders(value);
+                              }
+                            : null,
+                      ),
+                      SwitchListTile(
+                        title: const Text('Task Reminders'),
+                        subtitle: const Text('Notifications for upcoming tasks'),
+                        value: viewModel.taskReminders,
+                        onChanged: viewModel.notificationsEnabled
+                            ? (value) {
+                                viewModel.toggleTaskReminders(value);
+                              }
+                            : null,
+                      ),
+                      SwitchListTile(
+                        title: const Text('AI Insights'),
+                        subtitle: const Text('Smart suggestions and insights'),
+                        value: viewModel.aiInsights,
+                        onChanged: viewModel.notificationsEnabled
+                            ? (value) {
+                                viewModel.toggleAIInsights(value);
+                              }
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Note: Notification settings are synced across all your devices.',
+                        style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 

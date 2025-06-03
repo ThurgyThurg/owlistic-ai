@@ -10,6 +10,7 @@ class ZettelkastenSidePanel extends StatefulWidget {
   final Function(String) onFilterChanged;
   final Function(List<String>) onTagsChanged;
   final Function(ZettelNode?) onNodeSelected;
+  final Function(String) onSearchChanged;
   final VoidCallback onClose;
 
   const ZettelkastenSidePanel({
@@ -21,6 +22,7 @@ class ZettelkastenSidePanel extends StatefulWidget {
     required this.onFilterChanged,
     required this.onTagsChanged,
     required this.onNodeSelected,
+    required this.onSearchChanged,
     required this.onClose,
   });
 
@@ -108,7 +110,7 @@ class _ZettelkastenSidePanelState extends State<ZettelkastenSidePanel> {
                       isDense: true,
                     ),
                     onChanged: (value) {
-                      // TODO: Implement search
+                      widget.onSearchChanged(value);
                     },
                   ),
                   

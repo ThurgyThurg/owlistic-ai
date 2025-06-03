@@ -22,6 +22,7 @@ class _ZettelkastenScreenState extends State<ZettelkastenScreen> {
   ZettelNode? _selectedNode;
   String _selectedFilter = 'all';
   List<String> _selectedTags = [];
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -56,12 +57,20 @@ class _ZettelkastenScreenState extends State<ZettelkastenScreen> {
     _applyFilters();
   }
 
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+    _applyFilters();
+  }
+
   void _applyFilters() {
     final provider = context.read<ZettelkastenProvider>();
     
     ZettelSearchInput? filter;
-    if (_selectedFilter != 'all' || _selectedTags.isNotEmpty) {
+    if (_selectedFilter != 'all' || _selectedTags.isNotEmpty || _searchQuery.isNotEmpty) {
       filter = ZettelSearchInput(
+        query: _searchQuery.isEmpty ? null : _searchQuery,
         nodeTypes: _selectedFilter == 'all' ? null : [_selectedFilter],
         tags: _selectedTags.isEmpty ? null : _selectedTags,
       );
@@ -336,6 +345,7 @@ class _ZettelkastenScreenState extends State<ZettelkastenScreen> {
                     onFilterChanged: _onFilterChanged,
                     onTagsChanged: _onTagsChanged,
                     onNodeSelected: _onNodeSelected,
+                    onSearchChanged: _onSearchChanged,
                     onClose: _toggleSidePanel,
                   ),
                 ),

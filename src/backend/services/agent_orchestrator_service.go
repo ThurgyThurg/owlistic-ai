@@ -192,6 +192,12 @@ func (o *AgentOrchestrator) registerBuiltInAgents() {
 	}
 }
 
+// GetAgent returns a registered agent executor by type
+func (o *AgentOrchestrator) GetAgent(agentType AgentType) (AgentExecutor, bool) {
+	agent, exists := o.registeredAgents[agentType]
+	return agent, exists
+}
+
 // ExecuteChain executes an agent chain
 func (o *AgentOrchestrator) ExecuteChain(ctx context.Context, req ChainExecutionRequest) (*ChainExecutionResult, error) {
 	// Create execution result

@@ -2,9 +2,11 @@ package routes
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -421,7 +423,47 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement actual agent execution in background
+	// Execute agent in background
+	go func() {
+		// Update agent status to running
+		agent.Status = "running"
+		ar.db.Save(&agent)
+		
+		// Create agent orchestrator
+		orchestrator := services.NewAgentOrchestrator(ar.db)
+		
+		// Execute the agent based on type
+		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Minute)
+		defer cancel()
+		
+		var result interface{}
+		var err error
+		
+		// Execute agent based on type
+		executor, exists := orchestrator.GetAgent(services.AgentType(request.AgentType))
+		if !exists {
+			agent.Status = "failed"
+			agent.ErrorMessage = fmt.Sprintf("Unknown agent type: %s", request.AgentType)
+			ar.db.Save(&agent)
+			return
+		}
+		
+		// Execute the agent
+		result, err = executor.Execute(ctx, request.InputData)
+		
+		if err != nil {
+			agent.Status = "failed"
+			agent.ErrorMessage = err.Error()
+			agent.CompletedAt = &[]time.Time{time.Now()}[0]
+		} else {
+			agent.Status = "completed"
+			agent.Result = result
+			agent.CompletedAt = &[]time.Time{time.Now()}[0]
+		}
+		
+		// Save the final status
+		ar.db.Save(&agent)
+	}()
 	
 	c.JSON(http.StatusCreated, agent)
 }

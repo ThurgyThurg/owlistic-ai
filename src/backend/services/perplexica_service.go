@@ -87,7 +87,18 @@ func (p *PerplexicaService) IsEnabled() bool {
 		return false
 	}
 
-	// TODO: Add health check to Perplexica service
+	// Perform health check with a short timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	err := p.HealthCheck(ctx)
+	if err != nil {
+		p.logger.Warn("Perplexica health check failed", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return false
+	}
+	
 	return true
 }
 
