@@ -32,9 +32,8 @@ func GetBlocks(c *gin.Context, db *database.Database, blockService services.Bloc
 	// Get user ID from context (added by AuthMiddleware)
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	// Convert user ID to string and add to params
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
@@ -96,9 +95,8 @@ func CreateBlock(c *gin.Context, db *database.Database, blockService services.Bl
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -119,9 +117,8 @@ func GetBlockById(c *gin.Context, db *database.Database, blockService services.B
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -151,9 +148,8 @@ func UpdateBlock(c *gin.Context, db *database.Database, blockService services.Bl
 	// Add user ID from context to params (not to blockData)
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -184,9 +180,8 @@ func DeleteBlock(c *gin.Context, db *database.Database, blockService services.Bl
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -210,9 +205,8 @@ func GetBlocksByNote(c *gin.Context, db *database.Database, blockService service
 	// Get user ID from context (added by AuthMiddleware)
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	// Convert user ID to string and add to params
 	params["user_id"] = userIDInterface.(uuid.UUID).String()

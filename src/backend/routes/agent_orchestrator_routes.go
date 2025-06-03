@@ -52,9 +52,8 @@ func (aor *AgentOrchestratorRoutes) executeChain(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserIDFromDB(aor.db)
 	}
 
 	var req services.ChainExecutionRequest
@@ -166,9 +165,8 @@ func (aor *AgentOrchestratorRoutes) createChain(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserIDFromDB(aor.db)
 	}
 
 	var chain services.AgentChain
@@ -376,4 +374,17 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 		"chain":   chain,
 		"message": "Chain created from template successfully",
 	})
+}
+
+// getSingleUserIDFromDB returns the first user ID for single-user systems
+func getSingleUserIDFromDB(db *gorm.DB) uuid.UUID {
+	var user struct {
+		ID uuid.UUID `gorm:"column:id"`
+	}
+	if err := db.Table("users").First(&user).Error; err != nil {
+		// Return the intended single-user UUID as fallback
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		return singleUserUUID
+	}
+	return user.ID
 }

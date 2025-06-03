@@ -142,7 +142,7 @@ class _AgentOrchestratorScreenState extends State<AgentOrchestratorScreen> {
         message: 'Create your first agent chain to automate complex workflows',
         icon: Icons.account_tree,
         actionLabel: 'Create Chain',
-        onActionPressed: _showCreateChainDialog,
+        onAction: _showCreateChainDialog,
       );
     }
 

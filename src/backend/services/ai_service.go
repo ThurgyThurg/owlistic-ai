@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"owlistic-notes/owlistic/database"
 	"owlistic-notes/owlistic/models"
 
 	"github.com/google/uuid"
@@ -883,10 +884,40 @@ Return only the JSON, no additional text or formatting.`, maxSteps, title, descr
 
 // CreateProjectNotebook creates a notebook structure for a project using AI
 func (ai *AIService) CreateProjectNotebook(ctx context.Context, userID uuid.UUID, projectName, projectDescription string, breakdown map[string]interface{}) (*uuid.UUID, []uuid.UUID, error) {
-	// For now, return dummy UUIDs
-	// In a real implementation, this would create actual notebook and notes
-	notebookID := uuid.New()
-	noteIDs := []uuid.UUID{uuid.New(), uuid.New()}
+	// Create the notebook using the notebook service
+	notebookData := map[string]interface{}{
+		"name":        projectName + " - Project Notebook",
+		"description": projectDescription,
+		"user_id":     userID.String(),
+	}
 	
-	return &notebookID, noteIDs, nil
+	// Use the notebook service to create the notebook properly with roles
+	notebook, err := NotebookServiceInstance.CreateNotebook(&database.Database{DB: ai.db}, notebookData)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create project notebook: %w", err)
+	}
+	
+	// Create initial project notes based on the breakdown if provided
+	var noteIDs []uuid.UUID
+	if breakdown != nil {
+		if stepsData, exists := breakdown["steps"]; exists {
+			if _, ok := stepsData.([]interface{}); ok {
+				// Create a summary note with all steps
+				noteData := map[string]interface{}{
+					"title":       projectName + " - Task Breakdown",
+					"user_id":     userID.String(),
+					"notebook_id": notebook.ID.String(),
+				}
+				
+				note, err := NoteServiceInstance.CreateNote(&database.Database{DB: ai.db}, noteData)
+				if err != nil {
+					log.Printf("Failed to create project note: %v", err)
+				} else {
+					noteIDs = append(noteIDs, note.ID)
+				}
+			}
+		}
+	}
+	
+	return &notebook.ID, noteIDs, nil
 }

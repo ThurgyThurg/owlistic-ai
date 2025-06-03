@@ -31,9 +31,8 @@ func CreateTask(c *gin.Context, db *database.Database, taskService services.Task
 	// Get user ID from context and add it to task data
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	taskData["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -60,9 +59,8 @@ func GetTaskById(c *gin.Context, db *database.Database, taskService services.Tas
 	// Verify the authenticated user owns this task
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	userID := userIDInterface.(uuid.UUID)
 
@@ -85,9 +83,8 @@ func UpdateTask(c *gin.Context, db *database.Database, taskService services.Task
 	// Get user ID from context to verify ownership
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	userID := userIDInterface.(uuid.UUID)
 
@@ -125,9 +122,8 @@ func DeleteTask(c *gin.Context, db *database.Database, taskService services.Task
 	// Get user ID from context to verify ownership
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	userID := userIDInterface.(uuid.UUID)
 
@@ -165,9 +161,8 @@ func GetTasks(c *gin.Context, db *database.Database, taskService services.TaskSe
 	// Get user ID from context instead of query parameter
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 

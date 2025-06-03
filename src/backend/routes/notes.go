@@ -32,9 +32,8 @@ func CreateNote(c *gin.Context, db *database.Database, noteService services.Note
 	// Get user ID from context and add to note data
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	noteData["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -59,9 +58,8 @@ func GetNoteById(c *gin.Context, db *database.Database, noteService services.Not
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -92,9 +90,8 @@ func UpdateNote(c *gin.Context, db *database.Database, noteService services.Note
 	// Get user ID from context and add to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -143,9 +140,8 @@ func GetNotes(c *gin.Context, db *database.Database, noteService services.NoteSe
 	// Get user ID from context (set by AuthMiddleware)
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	// Convert user ID to string and add to params
 	params["user_id"] = userIDInterface.(uuid.UUID).String()

@@ -30,9 +30,8 @@ func GetTrashedItems(c *gin.Context, db *database.Database, trashService service
 	// Get user ID from context instead of query parameter
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	userID := userIDInterface.(uuid.UUID).String()
 
@@ -53,9 +52,8 @@ func RestoreItem(c *gin.Context, db *database.Database, trashService services.Tr
 	// Get user ID from context instead of query parameter
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	userID := userIDInterface.(uuid.UUID).String()
 
@@ -83,9 +81,8 @@ func PermanentlyDeleteItem(c *gin.Context, db *database.Database, trashService s
 	// Get user ID from context instead of query parameter
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	userID := userIDInterface.(uuid.UUID).String()
 
@@ -106,9 +103,8 @@ func EmptyTrash(c *gin.Context, db *database.Database, trashService services.Tra
 	// Get user ID from context instead of query parameter
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userIDInterface = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userIDInterface = getSingleUserID(db)
 	}
 	userID := userIDInterface.(uuid.UUID).String()
 
