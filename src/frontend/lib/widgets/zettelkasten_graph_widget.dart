@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'dart:math' as math;
 import 'package:owlistic/models/zettelkasten.dart';
 import 'package:owlistic/utils/logger.dart';
@@ -433,8 +432,8 @@ class _GraphPainter extends CustomPainter {
     
     // Draw arrowhead
     final direction = (end - start).normalize();
-    final arrowHead1 = end - direction.scale(10) + direction.rotate(0.5).scale(5);
-    final arrowHead2 = end - direction.scale(10) - direction.rotate(0.5).scale(5);
+    final arrowHead1 = end - (direction * 10) + (direction.rotate(0.5) * 5);
+    final arrowHead2 = end - (direction * 10) - (direction.rotate(0.5) * 5);
     
     final arrowPath = Path()
       ..moveTo(end.dx, end.dy)
@@ -459,12 +458,12 @@ class _GraphPainter extends CustomPainter {
     
     while (currentDistance < distance) {
       final dashEnd = currentDistance + dashLength;
-      final nextPoint = start + direction.scale(math.min(dashEnd, distance));
+      final nextPoint = start + (direction * math.min(dashEnd, distance));
       
       canvas.drawLine(currentPoint, nextPoint, paint);
       
       currentDistance = dashEnd + gapLength;
-      currentPoint = start + direction.scale(currentDistance);
+      currentPoint = start + (direction * currentDistance);
     }
   }
 
@@ -482,10 +481,6 @@ extension OffsetExtension on Offset {
     final length = distance;
     if (length == 0) return Offset.zero;
     return this / length;
-  }
-  
-  Offset scale(double factor) {
-    return this * factor;
   }
   
   Offset rotate(double angle) {

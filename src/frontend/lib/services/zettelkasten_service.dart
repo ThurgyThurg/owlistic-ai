@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'package:owlistic/services/base_service.dart';
 import 'package:owlistic/models/zettelkasten.dart';
 import 'package:owlistic/utils/logger.dart';
@@ -9,15 +7,12 @@ import 'package:owlistic/utils/logger.dart';
 class ZettelkastenService extends BaseService {
   final Logger _logger = Logger('ZettelkastenService');
 
-  ZettelkastenService({required super.baseUrl, required super.authService});
-
   /// Create a new Zettelkasten node from existing content
   Future<ZettelNode?> createNode(CreateZettelNodeInput input) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
+      final response = await authenticatedPost(
         '/zettelkasten/nodes',
-        body: input.toJson(),
+        input.toJson(),
       );
 
       if (response.statusCode == 201) {
@@ -36,7 +31,7 @@ class ZettelkastenService extends BaseService {
   /// Get all nodes with optional filtering
   Future<List<ZettelNode>> getAllNodes({ZettelSearchInput? filter}) async {
     try {
-      final queryParams = <String, String>{};
+      final queryParams = <String, dynamic>{};
       
       if (filter != null) {
         if (filter.query != null) queryParams['query'] = filter.query!;
@@ -54,8 +49,7 @@ class ZettelkastenService extends BaseService {
         if (filter.minStrength != null) queryParams['min_strength'] = filter.minStrength.toString();
       }
 
-      final uri = Uri.parse('$baseUrl/zettelkasten/nodes').replace(queryParameters: queryParams);
-      final response = await makeAuthenticatedRequestUri('GET', uri);
+      final response = await authenticatedGet('/zettelkasten/nodes', queryParameters: queryParams);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -74,10 +68,7 @@ class ZettelkastenService extends BaseService {
   /// Get a specific node by ID
   Future<ZettelNode?> getNodeById(String nodeId) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'GET',
-        '/zettelkasten/nodes/$nodeId',
-      );
+      final response = await authenticatedGet('/zettelkasten/nodes/$nodeId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -98,10 +89,9 @@ class ZettelkastenService extends BaseService {
   /// Update the position of a node in the graph
   Future<bool> updateNodePosition(String nodeId, NodePosition position) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'PUT',
+      final response = await authenticatedPut(
         '/zettelkasten/nodes/$nodeId/position',
-        body: {
+        {
           'node_id': nodeId,
           'position': position.toJson(),
         },
@@ -122,10 +112,7 @@ class ZettelkastenService extends BaseService {
   /// Delete a node from the graph
   Future<bool> deleteNode(String nodeId) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'DELETE',
-        '/zettelkasten/nodes/$nodeId',
-      );
+      final response = await authenticatedDelete('/zettelkasten/nodes/$nodeId');
 
       if (response.statusCode == 200) {
         return true;
@@ -145,10 +132,9 @@ class ZettelkastenService extends BaseService {
   /// Create a connection between two nodes
   Future<ZettelEdge?> createConnection(CreateZettelEdgeInput input) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
+      final response = await authenticatedPost(
         '/zettelkasten/connections',
-        body: input.toJson(),
+        input.toJson(),
       );
 
       if (response.statusCode == 201) {
@@ -167,10 +153,7 @@ class ZettelkastenService extends BaseService {
   /// Delete a connection between nodes
   Future<bool> deleteConnection(String edgeId) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'DELETE',
-        '/zettelkasten/connections/$edgeId',
-      );
+      final response = await authenticatedDelete('/zettelkasten/connections/$edgeId');
 
       if (response.statusCode == 200) {
         return true;
@@ -190,10 +173,7 @@ class ZettelkastenService extends BaseService {
   /// Get all available tags
   Future<List<ZettelTag>> getAllTags() async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'GET',
-        '/zettelkasten/tags',
-      );
+      final response = await authenticatedGet('/zettelkasten/tags');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -212,10 +192,9 @@ class ZettelkastenService extends BaseService {
   /// Create a new tag
   Future<ZettelTag?> createTag(CreateZettelTagInput input) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
+      final response = await authenticatedPost(
         '/zettelkasten/tags',
-        body: input.toJson(),
+        input.toJson(),
       );
 
       if (response.statusCode == 201) {
@@ -234,10 +213,7 @@ class ZettelkastenService extends BaseService {
   /// Get the complete graph data for visualization
   Future<ZettelGraph?> getGraphData() async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'GET',
-        '/zettelkasten/graph',
-      );
+      final response = await authenticatedGet('/zettelkasten/graph');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -255,10 +231,7 @@ class ZettelkastenService extends BaseService {
   /// Export the complete graph data
   Future<ZettelGraph?> exportGraph() async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'GET',
-        '/zettelkasten/graph/export',
-      );
+      final response = await authenticatedGet('/zettelkasten/graph/export');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -276,10 +249,7 @@ class ZettelkastenService extends BaseService {
   /// Request AI analysis of the knowledge graph
   Future<Map<String, dynamic>?> analyzeGraph() async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
-        '/zettelkasten/graph/analyze',
-      );
+      final response = await authenticatedPost('/zettelkasten/graph/analyze', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -297,10 +267,9 @@ class ZettelkastenService extends BaseService {
   /// Search for nodes based on criteria
   Future<List<ZettelNode>> searchNodes(ZettelSearchInput input) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
+      final response = await authenticatedPost(
         '/zettelkasten/search',
-        body: input.toJson(),
+        input.toJson(),
       );
 
       if (response.statusCode == 200) {
@@ -320,10 +289,7 @@ class ZettelkastenService extends BaseService {
   /// Discover potential connections for a node
   Future<Map<String, dynamic>?> discoverConnections(String nodeId) async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'GET',
-        '/zettelkasten/discover/$nodeId',
-      );
+      final response = await authenticatedGet('/zettelkasten/discover/$nodeId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -344,10 +310,7 @@ class ZettelkastenService extends BaseService {
   /// Synchronize all notes to create Zettelkasten nodes
   Future<Map<String, dynamic>?> syncNotes() async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
-        '/zettelkasten/sync/notes',
-      );
+      final response = await authenticatedPost('/zettelkasten/sync/notes', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -366,10 +329,7 @@ class ZettelkastenService extends BaseService {
   /// Synchronize all tasks to create Zettelkasten nodes
   Future<Map<String, dynamic>?> syncTasks() async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
-        '/zettelkasten/sync/tasks',
-      );
+      final response = await authenticatedPost('/zettelkasten/sync/tasks', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -388,10 +348,7 @@ class ZettelkastenService extends BaseService {
   /// Synchronize all content (notes, tasks, projects) to create Zettelkasten nodes
   Future<Map<String, dynamic>?> syncAll() async {
     try {
-      final response = await makeAuthenticatedRequest(
-        'POST',
-        '/zettelkasten/sync/all',
-      );
+      final response = await authenticatedPost('/zettelkasten/sync/all', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -407,29 +364,4 @@ class ZettelkastenService extends BaseService {
     }
   }
 
-  /// Helper method to make authenticated requests with URI
-  Future<http.Response> makeAuthenticatedRequestUri(String method, Uri uri) async {
-    final token = await authService.getStoredToken();
-    if (token == null) {
-      throw Exception('No authentication token available');
-    }
-
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return await http.get(uri, headers: headers);
-      case 'POST':
-        return await http.post(uri, headers: headers);
-      case 'PUT':
-        return await http.put(uri, headers: headers);
-      case 'DELETE':
-        return await http.delete(uri, headers: headers);
-      default:
-        throw Exception('Unsupported HTTP method: $method');
-    }
-  }
 }

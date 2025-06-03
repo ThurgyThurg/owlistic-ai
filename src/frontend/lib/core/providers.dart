@@ -69,10 +69,7 @@ void setupServices() {
   final appStateService = AppStateService();
   final trashService = TrashService();
   final userService = UserService();
-  final zettelkastenService = ZettelkastenService(
-    baseUrl: AppConfig.defaultServerUrl,
-    authService: authService,
-  );
+  final zettelkastenService = ZettelkastenService();
 
   // Initialize authService explicitly
   authService.initialize();

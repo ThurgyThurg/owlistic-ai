@@ -1,4 +1,3 @@
-import 'package:uuid/uuid.dart';
 
 /// Represents a position in 2D space for graph visualization
 class NodePosition {
