@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -14,7 +15,7 @@ type Note struct {
 	NotebookID uuid.UUID      `gorm:"type:uuid;not null;constraint:OnDelete:CASCADE;" json:"notebook_id"`
 	Title      string         `gorm:"not null" json:"title"`
 	Blocks     []Block        `gorm:"foreignKey:NoteID" json:"blocks"`
-	Tags       []string       `gorm:"type:text[]" json:"tags"`
+	Tags       pq.StringArray `gorm:"type:text[]" json:"tags"`
 	CreatedAt  time.Time      `gorm:"not null;default:now()" json:"created_at"`
 	UpdatedAt  time.Time      `gorm:"not null;default:now()" json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`

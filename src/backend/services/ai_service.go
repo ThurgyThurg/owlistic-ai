@@ -15,6 +15,7 @@ import (
 	"owlistic-notes/owlistic/models"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -1134,7 +1135,7 @@ func (ai *AIService) CreateProjectNotebook(ctx context.Context, userID uuid.UUID
 		UserID:     userID,
 		NotebookID: notebook.ID,
 		Title:      "📝 Project Overview",
-		Tags:       []string{"project-overview", "ai-generated"},
+		Tags:       pq.StringArray{"project-overview", "ai-generated"},
 	}
 
 	if err := ai.db.WithContext(ctx).Create(&overviewNote).Error; err != nil {
@@ -1301,7 +1302,7 @@ func (ai *AIService) createStepNote(ctx context.Context, userID, notebookID uuid
 		UserID:     userID,
 		NotebookID: notebookID,
 		Title:      title,
-		Tags:       []string{"project-step", "ai-generated", fmt.Sprintf("step-%d", stepNumber)},
+		Tags:       pq.StringArray{"project-step", "ai-generated", fmt.Sprintf("step-%d", stepNumber)},
 	}
 
 	if err := ai.db.WithContext(ctx).Create(&note).Error; err != nil {

@@ -14,6 +14,38 @@ import (
 // AIMetadata stores AI-generated metadata
 type AIMetadata map[string]interface{}
 
+// UUIDArray represents an array of UUIDs for PostgreSQL
+type UUIDArray []uuid.UUID
+
+func (ua UUIDArray) Value() (driver.Value, error) {
+	if ua == nil {
+		return nil, nil
+	}
+	strs := make([]string, len(ua))
+	for i, u := range ua {
+		strs[i] = u.String()
+	}
+	return pq.Array(strs).Value()
+}
+
+func (ua *UUIDArray) Scan(value interface{}) error {
+	var strs pq.StringArray
+	if err := strs.Scan(value); err != nil {
+		return err
+	}
+	
+	uuids := make([]uuid.UUID, len(strs))
+	for i, s := range strs {
+		u, err := uuid.Parse(s)
+		if err != nil {
+			return err
+		}
+		uuids[i] = u
+	}
+	*ua = uuids
+	return nil
+}
+
 func (am AIMetadata) Value() (driver.Value, error) {
 	if am == nil {
 		return nil, nil
@@ -94,10 +126,10 @@ type AIProject struct {
 	Description     string         `json:"description"`
 	Status          string         `gorm:"default:'active'" json:"status"` // active, completed, archived
 	NotebookID      *uuid.UUID     `gorm:"type:uuid" json:"notebook_id,omitempty"` // Link to created notebook
-	AITags          []string       `gorm:"type:text[]" json:"ai_tags,omitempty"`
+	AITags          pq.StringArray `gorm:"type:text[]" json:"ai_tags,omitempty"`
 	AIMetadata      AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"ai_metadata,omitempty"`
-	RelatedNoteIDs  []uuid.UUID    `gorm:"type:text[]" json:"related_note_ids,omitempty"`
-	RelatedTaskIDs  []uuid.UUID    `gorm:"type:text[]" json:"related_task_ids,omitempty"`
+	RelatedNoteIDs  UUIDArray      `gorm:"type:text[]" json:"related_note_ids,omitempty"`
+	RelatedTaskIDs  UUIDArray      `gorm:"type:text[]" json:"related_task_ids,omitempty"`
 	CreatedAt       time.Time      `gorm:"not null;default:now()" json:"created_at"`
 	UpdatedAt       time.Time      `gorm:"not null;default:now()" json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`

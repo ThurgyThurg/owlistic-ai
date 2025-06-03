@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 	"owlistic-notes/owlistic/models"
 	"owlistic-notes/owlistic/services"
@@ -234,9 +235,9 @@ func (ar *AIRoutes) createAIProject(c *gin.Context) {
 		Description:    request.Description,
 		Status:         "active",
 		NotebookID:     notebookID,
-		AITags:         request.AITags,
+		AITags:         pq.StringArray(request.AITags),
 		AIMetadata:     request.AIMetadata,
-		RelatedNoteIDs: relatedNoteIDs,
+		RelatedNoteIDs: models.UUIDArray(relatedNoteIDs),
 	}
 
 	if err := ar.db.Create(&project).Error; err != nil {
