@@ -39,12 +39,14 @@ class AppBarCommon extends StatelessWidget implements PreferredSizeWidget {
         leadingWidget = IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+          tooltip: 'Go back',
         );
       } else if (onMenuPressed != null) {
         // Show menu button if onMenuPressed callback is provided
         leadingWidget = IconButton(
           icon: const Icon(Icons.menu),
           onPressed: onMenuPressed,
+          tooltip: 'Open menu',
         );
       }
     }

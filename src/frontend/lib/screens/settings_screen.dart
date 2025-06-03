@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../viewmodel/theme_viewmodel.dart';
 import '../widgets/app_bar_common.dart';
 import '../widgets/card_container.dart';
@@ -55,6 +56,32 @@ class SettingsScreen extends StatelessWidget {
                         // TODO: Implement notification settings
                       },
                     ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            CardContainer(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.person),
+                    title: const Text('Account'),
+                    subtitle: const Text('Manage your profile and security'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      context.go('/profile');
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.storage),
+                    title: const Text('Data & Storage'),
+                    subtitle: const Text('Manage storage and export data'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      _showDataStorageDialog(context);
+                    },
                   ),
                 ],
               ),
@@ -138,6 +165,62 @@ class SettingsScreen extends StatelessWidget {
       children: const [
         Text('A powerful note-taking app with AI-powered features.'),
       ],
+    );
+  }
+
+  void _showDataStorageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.storage),
+            SizedBox(width: 8),
+            Text('Data & Storage'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Storage Options:'),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.download),
+              title: const Text('Export All Data'),
+              subtitle: const Text('Download your notes as JSON'),
+              onTap: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Export feature coming soon')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.backup),
+              title: const Text('Backup Settings'),
+              subtitle: const Text('Configure automatic backups'),
+              onTap: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Backup settings coming soon')),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Note: Your data is automatically synced across all your devices.',
+              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 }

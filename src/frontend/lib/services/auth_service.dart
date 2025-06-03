@@ -64,11 +64,19 @@ class AuthService extends BaseService {
         return;
       }
       
-      // Use the single-user credentials from environment/config
-      final email = 'admin@owlistic.local'; // Default from backend config
-      final password = 'admin123'; // Default from backend config
+      // Check if single-user credentials are configured
+      if (!AppConfig.hasSingleUserCredentials) {
+        _logger.error('Single-user credentials not configured. Please build with --dart-define=USER_EMAIL=your-email --dart-define=USER_PASSWORD=your-password');
+        _logger.info('Or configure credentials in your Docker/build environment');
+        // Skip auto-login if no credentials configured
+        return;
+      }
       
-      _logger.info('Attempting auto-login with single-user credentials');
+      // Use the single-user credentials from environment/config
+      final email = AppConfig.userEmail!;
+      final password = AppConfig.userPassword!;
+      
+      _logger.info('Attempting auto-login with configured single-user credentials');
       final result = await login(email, password);
       if (result['success'] == true) {
         _logger.info('Single-user auto-login successful');
@@ -79,17 +87,12 @@ class AuthService extends BaseService {
           _logger.info('Stored user ID: ${result['userId']}');
         }
       } else {
-        _logger.info('Single-user auto-login failed, using fallback');
-        _token = 'fallback-token';
-        BaseService.setAuthToken(_token);
-        _authStateController.add(true);
+        _logger.info('Single-user auto-login failed, credentials may be incorrect');
+        _logger.error('Please ensure frontend USER_EMAIL and USER_PASSWORD match backend .env configuration');
       }
     } catch (e) {
       _logger.error('Auto-login failed: $e');
-      // Fallback to mock authentication for development
-      _token = 'fallback-token';
-      BaseService.setAuthToken(_token);
-      _authStateController.add(true);
+      _logger.error('Please check your credentials configuration');
     }
   }
 

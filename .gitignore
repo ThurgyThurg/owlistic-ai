@@ -67,6 +67,16 @@ dist/
 # Docker
 *.dockerfile
 docker-compose.override.yml
+docker-compose.ai-brain.yml
 .env
 .env.*
 .dockerignore
+
+DEPLOYMENT_INSTRUCTIONS.md
+CLOUDFLARE_TUNNEL_SETUP.md
+CHROMA_MIGRATION_GUIDE.md
+AI_SECOND_BRAIN_SETUP.md
+DOCKER_AI_SETUP.md
+NETWORK_ACCESS_SETUP.md
+SINGLE_USER_SETUP.md
+SINGLE_USER_AUTH_SETUP.md

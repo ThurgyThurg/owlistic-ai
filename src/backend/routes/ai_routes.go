@@ -15,14 +15,22 @@ import (
 )
 
 type AIRoutes struct {
-	db        *gorm.DB
-	aiService *services.AIService
+	db                   *gorm.DB
+	aiService            *services.AIService
+	chatService          *services.ChatService
+	reasoningAgentService *services.ReasoningAgentService
 }
 
 func NewAIRoutes(db *gorm.DB) *AIRoutes {
+	// Initialize services
+	aiService := services.NewAIService(db)
+	noteService := services.NoteServiceInstance
+	
 	return &AIRoutes{
-		db:        db,
-		aiService: services.NewAIService(db),
+		db:                   db,
+		aiService:            aiService,
+		chatService:          services.NewChatService(db, aiService, noteService),
+		reasoningAgentService: services.NewReasoningAgentService(db, aiService, noteService),
 	}
 }
 
@@ -51,6 +59,12 @@ func (ar *AIRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
 		// AI Chat/Memory
 		aiGroup.POST("/chat", ar.chatWithAI)
 		aiGroup.GET("/chat/history", ar.getChatHistory)
+		aiGroup.GET("/chat/sessions", ar.getChatSessions)
+		aiGroup.DELETE("/chat/sessions/:id", ar.deleteChatSession)
+		
+		// Reasoning Agent
+		aiGroup.POST("/agents/reasoning", ar.runReasoningAgent)
+		aiGroup.GET("/agents/reasoning/:id", ar.getReasoningAgentResult)
 	}
 }
 
@@ -492,12 +506,9 @@ func (ar *AIRoutes) quickGoalAgent(c *gin.Context) {
 	ar.runAgent(c)
 }
 
-// chatWithAI provides conversational AI interface
+// chatWithAI provides conversational AI interface with RAG
 func (ar *AIRoutes) chatWithAI(c *gin.Context) {
-	var request struct {
-		Message   string `json:"message" binding:"required"`
-		SessionID string `json:"session_id"`
-	}
+	var request services.ChatRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -510,43 +521,14 @@ func (ar *AIRoutes) chatWithAI(c *gin.Context) {
 		return
 	}
 
-	if request.SessionID == "" {
-		request.SessionID = uuid.New().String()
-	}
-
-	// Store user message
-	userMessage := models.ChatMemory{
-		UserID:    userID.(uuid.UUID),
-		SessionID: request.SessionID,
-		Role:      "user",
-		Content:   request.Message,
-	}
-
-	if err := ar.db.Create(&userMessage).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store message"})
+	// Use the chat service to handle the request
+	response, err := ar.chatService.Chat(c.Request.Context(), userID.(uuid.UUID), request)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process chat: " + err.Error()})
 		return
 	}
 
-	// TODO: Generate AI response using context from chat history and notes
-	// For now, return a placeholder response
-	
-	aiResponse := models.ChatMemory{
-		UserID:    userID.(uuid.UUID),
-		SessionID: request.SessionID,
-		Role:      "assistant",
-		Content:   "I understand your message. AI chat functionality is being implemented.",
-	}
-
-	if err := ar.db.Create(&aiResponse).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store AI response"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"session_id": request.SessionID,
-		"response":   aiResponse.Content,
-		"timestamp":  aiResponse.CreatedAt,
-	})
+	c.JSON(http.StatusOK, response)
 }
 
 // getChatHistory returns chat history for a session
@@ -628,4 +610,107 @@ func (ar *AIRoutes) breakDownTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, breakdown)
+}
+
+// getChatSessions returns all chat sessions for the user
+func (ar *AIRoutes) getChatSessions(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	sessions, err := ar.chatService.GetChatSessions(c.Request.Context(), userID.(uuid.UUID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat sessions"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sessions": sessions,
+	})
+}
+
+// deleteChatSession deletes a chat session
+func (ar *AIRoutes) deleteChatSession(c *gin.Context) {
+	sessionID := c.Param("id")
+	
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	err := ar.chatService.DeleteChatSession(c.Request.Context(), userID.(uuid.UUID), sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete chat session"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Chat session deleted successfully"})
+}
+
+// runReasoningAgent starts a reasoning loop agent
+func (ar *AIRoutes) runReasoningAgent(c *gin.Context) {
+	var request struct {
+		Goal     string `json:"goal" binding:"required"`
+		Context  string `json:"context"`
+		Strategy string `json:"strategy"` // methodical, exploratory, focused
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Execute reasoning loop in background
+	agent, err := ar.reasoningAgentService.ExecuteReasoningLoop(
+		c.Request.Context(),
+		userID.(uuid.UUID),
+		request.Goal,
+		request.Context,
+		request.Strategy,
+	)
+	
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start reasoning agent: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"agent_id": agent.ID,
+		"status": agent.Status,
+		"message": "Reasoning agent started successfully",
+	})
+}
+
+// getReasoningAgentResult gets the result of a reasoning agent run
+func (ar *AIRoutes) getReasoningAgentResult(c *gin.Context) {
+	agentIDStr := c.Param("id")
+	agentID, err := uuid.Parse(agentIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid agent ID"})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	var agent models.AIAgent
+	if err := ar.db.Where("id = ? AND user_id = ? AND agent_type = ?", agentID, userID, "reasoning_loop").
+		First(&agent).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Reasoning agent not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, agent)
 }

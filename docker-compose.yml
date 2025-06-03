@@ -45,6 +45,8 @@ services:
       args:
         - SERVER_URL=${SERVER_URL}
         - FALLBACK_SERVER_URL=${SERVER_URL}
+        - USER_EMAIL=${USER_EMAIL}
+        - USER_PASSWORD=${USER_PASSWORD}
     ports:
       - "80:80"
     depends_on:

@@ -11,7 +11,7 @@ class ZettelkastenService extends BaseService {
   Future<ZettelNode?> createNode(CreateZettelNodeInput input) async {
     try {
       final response = await authenticatedPost(
-        '/zettelkasten/nodes',
+        '/api/v1/zettelkasten/nodes',
         input.toJson(),
       );
 
@@ -49,7 +49,7 @@ class ZettelkastenService extends BaseService {
         if (filter.minStrength != null) queryParams['min_strength'] = filter.minStrength.toString();
       }
 
-      final response = await authenticatedGet('/zettelkasten/nodes', queryParameters: queryParams);
+      final response = await authenticatedGet('/api/v1/zettelkasten/nodes', queryParameters: queryParams);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -68,7 +68,7 @@ class ZettelkastenService extends BaseService {
   /// Get a specific node by ID
   Future<ZettelNode?> getNodeById(String nodeId) async {
     try {
-      final response = await authenticatedGet('/zettelkasten/nodes/$nodeId');
+      final response = await authenticatedGet('/api/v1/zettelkasten/nodes/$nodeId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -90,7 +90,7 @@ class ZettelkastenService extends BaseService {
   Future<bool> updateNodePosition(String nodeId, NodePosition position) async {
     try {
       final response = await authenticatedPut(
-        '/zettelkasten/nodes/$nodeId/position',
+        '/api/v1/zettelkasten/nodes/$nodeId/position',
         {
           'node_id': nodeId,
           'position': position.toJson(),
@@ -112,7 +112,7 @@ class ZettelkastenService extends BaseService {
   /// Delete a node from the graph
   Future<bool> deleteNode(String nodeId) async {
     try {
-      final response = await authenticatedDelete('/zettelkasten/nodes/$nodeId');
+      final response = await authenticatedDelete('/api/v1/zettelkasten/nodes/$nodeId');
 
       if (response.statusCode == 200) {
         return true;
@@ -133,7 +133,7 @@ class ZettelkastenService extends BaseService {
   Future<ZettelEdge?> createConnection(CreateZettelEdgeInput input) async {
     try {
       final response = await authenticatedPost(
-        '/zettelkasten/connections',
+        '/api/v1/zettelkasten/connections',
         input.toJson(),
       );
 
@@ -153,7 +153,7 @@ class ZettelkastenService extends BaseService {
   /// Delete a connection between nodes
   Future<bool> deleteConnection(String edgeId) async {
     try {
-      final response = await authenticatedDelete('/zettelkasten/connections/$edgeId');
+      final response = await authenticatedDelete('/api/v1/zettelkasten/connections/$edgeId');
 
       if (response.statusCode == 200) {
         return true;
@@ -173,7 +173,7 @@ class ZettelkastenService extends BaseService {
   /// Get all available tags
   Future<List<ZettelTag>> getAllTags() async {
     try {
-      final response = await authenticatedGet('/zettelkasten/tags');
+      final response = await authenticatedGet('/api/v1/zettelkasten/tags');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -193,7 +193,7 @@ class ZettelkastenService extends BaseService {
   Future<ZettelTag?> createTag(CreateZettelTagInput input) async {
     try {
       final response = await authenticatedPost(
-        '/zettelkasten/tags',
+        '/api/v1/zettelkasten/tags',
         input.toJson(),
       );
 
@@ -213,7 +213,7 @@ class ZettelkastenService extends BaseService {
   /// Get the complete graph data for visualization
   Future<ZettelGraph?> getGraphData() async {
     try {
-      final response = await authenticatedGet('/zettelkasten/graph');
+      final response = await authenticatedGet('/api/v1/zettelkasten/graph');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -231,7 +231,7 @@ class ZettelkastenService extends BaseService {
   /// Export the complete graph data
   Future<ZettelGraph?> exportGraph() async {
     try {
-      final response = await authenticatedGet('/zettelkasten/graph/export');
+      final response = await authenticatedGet('/api/v1/zettelkasten/graph/export');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -249,7 +249,7 @@ class ZettelkastenService extends BaseService {
   /// Request AI analysis of the knowledge graph
   Future<Map<String, dynamic>?> analyzeGraph() async {
     try {
-      final response = await authenticatedPost('/zettelkasten/graph/analyze', {});
+      final response = await authenticatedPost('/api/v1/zettelkasten/graph/analyze', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -268,7 +268,7 @@ class ZettelkastenService extends BaseService {
   Future<List<ZettelNode>> searchNodes(ZettelSearchInput input) async {
     try {
       final response = await authenticatedPost(
-        '/zettelkasten/search',
+        '/api/v1/zettelkasten/search',
         input.toJson(),
       );
 
@@ -289,7 +289,7 @@ class ZettelkastenService extends BaseService {
   /// Discover potential connections for a node
   Future<Map<String, dynamic>?> discoverConnections(String nodeId) async {
     try {
-      final response = await authenticatedGet('/zettelkasten/discover/$nodeId');
+      final response = await authenticatedGet('/api/v1/zettelkasten/discover/$nodeId');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -310,7 +310,7 @@ class ZettelkastenService extends BaseService {
   /// Synchronize all notes to create Zettelkasten nodes
   Future<Map<String, dynamic>?> syncNotes() async {
     try {
-      final response = await authenticatedPost('/zettelkasten/sync/notes', {});
+      final response = await authenticatedPost('/api/v1/zettelkasten/sync/notes', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -329,7 +329,7 @@ class ZettelkastenService extends BaseService {
   /// Synchronize all tasks to create Zettelkasten nodes
   Future<Map<String, dynamic>?> syncTasks() async {
     try {
-      final response = await authenticatedPost('/zettelkasten/sync/tasks', {});
+      final response = await authenticatedPost('/api/v1/zettelkasten/sync/tasks', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -348,7 +348,7 @@ class ZettelkastenService extends BaseService {
   /// Synchronize all content (notes, tasks, projects) to create Zettelkasten nodes
   Future<Map<String, dynamic>?> syncAll() async {
     try {
-      final response = await authenticatedPost('/zettelkasten/sync/all', {});
+      final response = await authenticatedPost('/api/v1/zettelkasten/sync/all', {});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

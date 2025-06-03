@@ -142,8 +142,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       final success = await _profileViewModel.deleteAccount();
       
       if (success && mounted) {
-        // Navigate to login screen after account deletion
-        context.go('/login');
+        // Navigate to home screen after account deletion
+        context.go('/');
       }
     }
   }

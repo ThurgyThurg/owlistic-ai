@@ -85,6 +85,7 @@ class _ZettelkastenSidePanelState extends State<ZettelkastenSidePanel> {
                   icon: const Icon(Icons.close),
                   onPressed: widget.onClose,
                   iconSize: 20,
+                  tooltip: 'Close panel',
                 ),
               ],
             ),

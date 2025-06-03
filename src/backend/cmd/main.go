@@ -108,6 +108,10 @@ func main() {
 	// Register AI routes on protected group
 	aiRoutes := routes.NewAIRoutes(db.DB)
 	aiRoutes.RegisterRoutes(protectedGroup)
+	
+	// Register Agent Orchestrator routes on protected group
+	orchestratorRoutes := routes.NewAgentOrchestratorRoutes(db.DB)
+	orchestratorRoutes.RegisterRoutes(protectedGroup)
 
 	// Register Calendar routes on protected group
 	calendarRoutes, err := routes.NewCalendarRoutes(db.DB)
