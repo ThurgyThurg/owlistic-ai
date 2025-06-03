@@ -139,9 +139,6 @@ class SettingsViewModel extends ChangeNotifier {
       // Update user profile with new preferences
       final updatedUser = await _userService.updateUserProfile(currentUser.id, profile);
       
-      // Update the stored user in auth service
-      await _authService.storeUser(updatedUser);
-      
       _logger.info('Preferences updated successfully');
     } catch (e) {
       _logger.error('Failed to update preferences', e);
