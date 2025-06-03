@@ -93,6 +93,7 @@ type AIProject struct {
 	Name            string         `gorm:"not null" json:"name"`
 	Description     string         `json:"description"`
 	Status          string         `gorm:"default:'active'" json:"status"` // active, completed, archived
+	NotebookID      *uuid.UUID     `gorm:"type:uuid" json:"notebook_id,omitempty"` // Link to created notebook
 	AITags          []string       `gorm:"type:text[]" json:"ai_tags,omitempty"`
 	AIMetadata      AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"ai_metadata,omitempty"`
 	RelatedNoteIDs  []uuid.UUID    `gorm:"type:text[]" json:"related_note_ids,omitempty"`

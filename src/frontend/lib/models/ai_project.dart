@@ -4,8 +4,10 @@ class AIProject {
   final String name;
   final String? description;
   final String status;
+  final String? notebookId;
   final List<String>? aiTags;
   final Map<String, dynamic>? aiMetadata;
+  final List<String>? relatedNoteIds;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -15,8 +17,10 @@ class AIProject {
     required this.name,
     this.description,
     required this.status,
+    this.notebookId,
     this.aiTags,
     this.aiMetadata,
+    this.relatedNoteIds,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -46,14 +50,21 @@ class AIProject {
       aiMetadata = Map<String, dynamic>.from(json['ai_metadata']);
     }
 
+    List<String>? relatedNoteIds;
+    if (json['related_note_ids'] != null && json['related_note_ids'] is List) {
+      relatedNoteIds = (json['related_note_ids'] as List).cast<String>();
+    }
+
     return AIProject(
       id: json['id'] ?? '',
       userId: json['user_id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'],
       status: json['status'] ?? '',
+      notebookId: json['notebook_id'],
       aiTags: aiTags,
       aiMetadata: aiMetadata,
+      relatedNoteIds: relatedNoteIds,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -66,8 +77,10 @@ class AIProject {
       'name': name,
       if (description != null) 'description': description,
       'status': status,
+      if (notebookId != null) 'notebook_id': notebookId,
       if (aiTags != null) 'ai_tags': aiTags,
       if (aiMetadata != null) 'ai_metadata': aiMetadata,
+      if (relatedNoteIds != null) 'related_note_ids': relatedNoteIds,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -79,8 +92,10 @@ class AIProject {
     String? name,
     String? description,
     String? status,
+    String? notebookId,
     List<String>? aiTags,
     Map<String, dynamic>? aiMetadata,
+    List<String>? relatedNoteIds,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -90,8 +105,10 @@ class AIProject {
       name: name ?? this.name,
       description: description ?? this.description,
       status: status ?? this.status,
+      notebookId: notebookId ?? this.notebookId,
       aiTags: aiTags ?? this.aiTags,
       aiMetadata: aiMetadata ?? this.aiMetadata,
+      relatedNoteIds: relatedNoteIds ?? this.relatedNoteIds,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -101,6 +118,8 @@ class AIProject {
   bool get isCompleted => status == 'completed';
   bool get isArchived => status == 'archived';
   bool get isPaused => status == 'paused';
+  bool get hasNotebook => notebookId != null;
+  bool get hasNotes => relatedNoteIds != null && relatedNoteIds!.isNotEmpty;
 }
 
 class TaskBreakdownRequest {

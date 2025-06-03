@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../models/ai_project.dart';
 import '../models/ai_agent.dart';
 import '../services/ai_service.dart';
@@ -642,45 +643,118 @@ class _AIDashboardScreenState extends State<AIDashboardScreen>
   Widget _buildProjectCard(AIProject project) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: project.isActive 
-              ? Colors.blue 
-              : project.isCompleted 
-                  ? Colors.green 
-                  : Colors.grey,
-          child: Icon(
-            project.isActive 
-                ? Icons.play_arrow 
-                : project.isCompleted 
-                    ? Icons.check 
-                    : Icons.archive,
-            color: Colors.white,
-          ),
-        ),
-        title: Text(project.name),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (project.description != null) Text(project.description!),
-            Text('Status: ${project.status}'),
-            if (project.aiTags?.isNotEmpty == true)
-              Wrap(
-                spacing: 4,
-                children: project.aiTags!.take(3).map((tag) => Chip(
-                  label: Text(tag),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                )).toList(),
+      child: Column(
+        children: [
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: project.isActive 
+                  ? Colors.blue 
+                  : project.isCompleted 
+                      ? Colors.green 
+                      : Colors.grey,
+              child: Icon(
+                project.isActive 
+                    ? Icons.play_arrow 
+                    : project.isCompleted 
+                        ? Icons.check 
+                        : Icons.archive,
+                color: Colors.white,
               ),
+            ),
+            title: Text(project.name),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (project.description != null) Text(project.description!),
+                Text('Status: ${project.status}'),
+                if (project.hasNotebook)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.folder_special,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Notebook created',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                if (project.hasNotes)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.note,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${project.relatedNoteIds!.length} notes',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.secondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                if (project.aiTags?.isNotEmpty == true) ...[
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    children: project.aiTags!.take(3).map((tag) => Chip(
+                      label: Text(tag),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    )).toList(),
+                  ),
+                ],
+              ],
+            ),
+            trailing: Text(
+              project.createdAt.toLocal().toString().split(' ')[0],
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            onTap: () {
+              // TODO: Navigate to project details
+            },
+          ),
+          if (project.hasNotebook) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        context.go('/notebooks/${project.notebookId}');
+                      },
+                      icon: const Icon(Icons.folder_open, size: 16),
+                      label: const Text('Open Notebook'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      context.go('/notes');
+                    },
+                    icon: const Icon(Icons.list, size: 16),
+                    label: const Text('View Notes'),
+                  ),
+                ],
+              ),
+            ),
           ],
-        ),
-        trailing: Text(
-          project.createdAt.toLocal().toString().split(' ')[0],
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        onTap: () {
-          // TODO: Navigate to project details
-        },
+        ],
       ),
     );
   }

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -157,7 +158,7 @@ func (ar *AIRoutes) semanticSearch(c *gin.Context) {
 		request.Limit = 10
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -197,19 +198,45 @@ func (ar *AIRoutes) createAIProject(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
 
+	// Check if this project was created from a task breakdown
+	var notebookID *uuid.UUID
+	var relatedNoteIDs []uuid.UUID
+
+	if breakdown, hasBreakdown := request.AIMetadata["breakdown"]; hasBreakdown {
+		if breakdownMap, ok := breakdown.(map[string]interface{}); ok {
+			// Create notebook and notes for the project
+			nbID, noteIDs, err := ar.aiService.CreateProjectNotebook(
+				c.Request.Context(),
+				userID.(uuid.UUID),
+				request.Name,
+				request.Description,
+				breakdownMap,
+			)
+			if err != nil {
+				log.Printf("Failed to create project notebook: %v", err)
+				// Continue with project creation even if notebook creation fails
+			} else {
+				notebookID = nbID
+				relatedNoteIDs = noteIDs
+			}
+		}
+	}
+
 	project := models.AIProject{
-		UserID:      userID.(uuid.UUID),
-		Name:        request.Name,
-		Description: request.Description,
-		Status:      "active",
-		AITags:      request.AITags,
-		AIMetadata:  request.AIMetadata,
+		UserID:         userID.(uuid.UUID),
+		Name:           request.Name,
+		Description:    request.Description,
+		Status:         "active",
+		NotebookID:     notebookID,
+		AITags:         request.AITags,
+		AIMetadata:     request.AIMetadata,
+		RelatedNoteIDs: relatedNoteIDs,
 	}
 
 	if err := ar.db.Create(&project).Error; err != nil {
@@ -222,7 +249,7 @@ func (ar *AIRoutes) createAIProject(c *gin.Context) {
 
 // getAIProjects returns all AI projects for the user
 func (ar *AIRoutes) getAIProjects(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -246,7 +273,7 @@ func (ar *AIRoutes) getAIProject(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -270,7 +297,7 @@ func (ar *AIRoutes) updateAIProject(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -329,7 +356,7 @@ func (ar *AIRoutes) deleteAIProject(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -361,7 +388,7 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -386,7 +413,7 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 
 // getAgentRuns returns agent execution history
 func (ar *AIRoutes) getAgentRuns(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -420,7 +447,7 @@ func (ar *AIRoutes) getAgentRun(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -476,7 +503,7 @@ func (ar *AIRoutes) chatWithAI(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -529,7 +556,7 @@ func (ar *AIRoutes) getChatHistory(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return

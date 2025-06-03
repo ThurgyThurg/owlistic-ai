@@ -1116,6 +1116,377 @@ func (ai *AIService) createFallbackBreakdown(goal, context string, maxSteps int)
 	}
 }
 
+// CreateProjectNotebook creates a notebook and notes for an AI project based on task breakdown
+func (ai *AIService) CreateProjectNotebook(ctx context.Context, userID uuid.UUID, projectName, projectDescription string, taskBreakdown map[string]interface{}) (*uuid.UUID, []uuid.UUID, error) {
+	// Create the project notebook
+	notebook := models.Notebook{
+		UserID:      userID,
+		Name:        "📋 " + projectName,
+		Description: projectDescription,
+	}
+
+	if err := ai.db.WithContext(ctx).Create(&notebook).Error; err != nil {
+		return nil, nil, fmt.Errorf("failed to create project notebook: %w", err)
+	}
+
+	// Create overview note
+	overviewNote := models.Note{
+		UserID:     userID,
+		NotebookID: notebook.ID,
+		Title:      "📝 Project Overview",
+		Tags:       []string{"project-overview", "ai-generated"},
+	}
+
+	if err := ai.db.WithContext(ctx).Create(&overviewNote).Error; err != nil {
+		return nil, nil, fmt.Errorf("failed to create overview note: %w", err)
+	}
+
+	noteIDs := []uuid.UUID{overviewNote.ID}
+
+	// Add overview content blocks
+	if err := ai.createOverviewBlocks(ctx, overviewNote.ID, userID, taskBreakdown); err != nil {
+		log.Printf("Failed to create overview blocks: %v", err)
+	}
+
+	// Create notes for each step if we have steps in the breakdown
+	if steps, ok := taskBreakdown["steps"].([]interface{}); ok {
+		for i, stepInterface := range steps {
+			if stepMap, ok := stepInterface.(map[string]interface{}); ok {
+				stepNote, err := ai.createStepNote(ctx, userID, notebook.ID, stepMap, i+1)
+				if err != nil {
+					log.Printf("Failed to create step note %d: %v", i+1, err)
+					continue
+				}
+				noteIDs = append(noteIDs, stepNote.ID)
+			}
+		}
+	}
+
+	return &notebook.ID, noteIDs, nil
+}
+
+// createOverviewBlocks creates blocks for the project overview note
+func (ai *AIService) createOverviewBlocks(ctx context.Context, noteID, userID uuid.UUID, taskBreakdown map[string]interface{}) error {
+	order := 1.0
+
+	// Project title and description
+	if goal, ok := taskBreakdown["goal"].(string); ok {
+		titleBlock := models.Block{
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   order,
+			Content: map[string]interface{}{
+				"text":  goal,
+				"level": 1,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&titleBlock).Error; err != nil {
+			return err
+		}
+		order++
+	}
+
+	// Project metadata
+	metadataItems := []struct {
+		key   string
+		label string
+		icon  string
+	}{
+		{"estimated_timeframe", "⏱️ Estimated Timeframe", "⏱️"},
+		{"complexity", "📊 Complexity", "📊"},
+	}
+
+	for _, item := range metadataItems {
+		if value, ok := taskBreakdown[item.key].(string); ok {
+			block := models.Block{
+				UserID:  userID,
+				NoteID:  noteID,
+				Type:    "paragraph",
+				Order:   order,
+				Content: map[string]interface{}{
+					"text": fmt.Sprintf("**%s**: %s", item.label, value),
+				},
+			}
+			if err := ai.db.WithContext(ctx).Create(&block).Error; err != nil {
+				return err
+			}
+			order++
+		}
+	}
+
+	// Prerequisites
+	if prereqs, ok := taskBreakdown["prerequisites"].([]interface{}); ok && len(prereqs) > 0 {
+		headerBlock := models.Block{
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   order,
+			Content: map[string]interface{}{
+				"text":  "📋 Prerequisites",
+				"level": 2,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&headerBlock).Error; err != nil {
+			return err
+		}
+		order++
+
+		for _, prereq := range prereqs {
+			if prereqStr, ok := prereq.(string); ok {
+				block := models.Block{
+					UserID:  userID,
+					NoteID:  noteID,
+					Type:    "bulleted-list",
+					Order:   order,
+					Content: map[string]interface{}{
+						"text": prereqStr,
+					},
+				}
+				if err := ai.db.WithContext(ctx).Create(&block).Error; err != nil {
+					return err
+				}
+				order++
+			}
+		}
+	}
+
+	// Resources
+	if resources, ok := taskBreakdown["resources"].([]interface{}); ok && len(resources) > 0 {
+		headerBlock := models.Block{
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   order,
+			Content: map[string]interface{}{
+				"text":  "🛠️ Resources",
+				"level": 2,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&headerBlock).Error; err != nil {
+			return err
+		}
+		order++
+
+		for _, resource := range resources {
+			if resourceStr, ok := resource.(string); ok {
+				block := models.Block{
+					UserID:  userID,
+					NoteID:  noteID,
+					Type:    "bulleted-list",
+					Order:   order,
+					Content: map[string]interface{}{
+						"text": resourceStr,
+					},
+				}
+				if err := ai.db.WithContext(ctx).Create(&block).Error; err != nil {
+					return err
+				}
+				order++
+			}
+		}
+	}
+
+	return nil
+}
+
+// createStepNote creates a note for an individual step
+func (ai *AIService) createStepNote(ctx context.Context, userID, notebookID uuid.UUID, stepData map[string]interface{}, stepNumber int) (*models.Note, error) {
+	title := fmt.Sprintf("Step %d", stepNumber)
+	if stepTitle, ok := stepData["title"].(string); ok {
+		title = fmt.Sprintf("Step %d: %s", stepNumber, stepTitle)
+	}
+
+	note := models.Note{
+		UserID:     userID,
+		NotebookID: notebookID,
+		Title:      title,
+		Tags:       []string{"project-step", "ai-generated", fmt.Sprintf("step-%d", stepNumber)},
+	}
+
+	if err := ai.db.WithContext(ctx).Create(&note).Error; err != nil {
+		return nil, fmt.Errorf("failed to create step note: %w", err)
+	}
+
+	// Create blocks for the step
+	if err := ai.createStepBlocks(ctx, note.ID, userID, stepData, stepNumber); err != nil {
+		log.Printf("Failed to create step blocks: %v", err)
+	}
+
+	return &note, nil
+}
+
+// createStepBlocks creates blocks for a step note
+func (ai *AIService) createStepBlocks(ctx context.Context, noteID, userID uuid.UUID, stepData map[string]interface{}, stepNumber int) error {
+	order := 1.0
+
+	// Step title
+	if title, ok := stepData["title"].(string); ok {
+		titleBlock := models.Block{
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   order,
+			Content: map[string]interface{}{
+				"text":  fmt.Sprintf("🎯 Step %d: %s", stepNumber, title),
+				"level": 1,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&titleBlock).Error; err != nil {
+			return err
+		}
+		order++
+	}
+
+	// Description
+	if description, ok := stepData["description"].(string); ok {
+		descBlock := models.Block{
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    "paragraph",
+			Order:   order,
+			Content: map[string]interface{}{
+				"text": description,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&descBlock).Error; err != nil {
+			return err
+		}
+		order++
+	}
+
+	// Step metadata
+	metadataItems := []struct {
+		key   string
+		label string
+	}{
+		{"estimated_duration", "⏱️ Estimated Duration"},
+		{"difficulty", "📊 Difficulty"},
+	}
+
+	for _, item := range metadataItems {
+		if value, ok := stepData[item.key].(string); ok {
+			block := models.Block{
+				UserID:  userID,
+				NoteID:  noteID,
+				Type:    "paragraph",
+				Order:   order,
+				Content: map[string]interface{}{
+					"text": fmt.Sprintf("**%s**: %s", item.label, value),
+				},
+			}
+			if err := ai.db.WithContext(ctx).Create(&block).Error; err != nil {
+				return err
+			}
+			order++
+		}
+	}
+
+	// Deliverables
+	if deliverables, ok := stepData["deliverables"].([]interface{}); ok && len(deliverables) > 0 {
+		headerBlock := models.Block{
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   order,
+			Content: map[string]interface{}{
+				"text":  "📦 Deliverables",
+				"level": 2,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&headerBlock).Error; err != nil {
+			return err
+		}
+		order++
+
+		for _, deliverable := range deliverables {
+			if deliverableStr, ok := deliverable.(string); ok {
+				block := models.Block{
+					UserID:  userID,
+					NoteID:  noteID,
+					Type:    "task",
+					Order:   order,
+					Content: map[string]interface{}{
+						"text":      deliverableStr,
+						"completed": false,
+					},
+				}
+				if err := ai.db.WithContext(ctx).Create(&block).Error; err != nil {
+					return err
+				}
+				order++
+			}
+		}
+	}
+
+	// Dependencies
+	if dependencies, ok := stepData["dependencies"].([]interface{}); ok && len(dependencies) > 0 {
+		headerBlock := models.Block{
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    "heading",
+			Order:   order,
+			Content: map[string]interface{}{
+				"text":  "🔗 Dependencies",
+				"level": 2,
+			},
+		}
+		if err := ai.db.WithContext(ctx).Create(&headerBlock).Error; err != nil {
+			return err
+		}
+		order++
+
+		for _, dependency := range dependencies {
+			if dependencyStr, ok := dependency.(string); ok {
+				block := models.Block{
+					UserID:  userID,
+					NoteID:  noteID,
+					Type:    "bulleted-list",
+					Order:   order,
+					Content: map[string]interface{}{
+						"text": dependencyStr,
+					},
+				}
+				if err := ai.db.WithContext(ctx).Create(&block).Error; err != nil {
+					return err
+				}
+				order++
+			}
+		}
+	}
+
+	// Add a progress section
+	progressHeader := models.Block{
+		UserID:  userID,
+		NoteID:  noteID,
+		Type:    "heading",
+		Order:   order,
+		Content: map[string]interface{}{
+			"text":  "📝 Progress Notes",
+			"level": 2,
+		},
+	}
+	if err := ai.db.WithContext(ctx).Create(&progressHeader).Error; err != nil {
+		return err
+	}
+	order++
+
+	progressPlaceholder := models.Block{
+		UserID:  userID,
+		NoteID:  noteID,
+		Type:    "paragraph",
+		Order:   order,
+		Content: map[string]interface{}{
+			"text": "_Add your progress notes, thoughts, and updates here..._",
+		},
+	}
+	if err := ai.db.WithContext(ctx).Create(&progressPlaceholder).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
