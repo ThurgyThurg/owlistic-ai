@@ -177,13 +177,16 @@ class AuthService extends BaseService {
       _logger.debug('Current URL in SharedPreferences: $currentUrl');
       _logger.debug('AppConfig.serverUrl: ${AppConfig.serverUrl}');
       
-      if (currentUrl == null || currentUrl.isEmpty) {
-        // Use the configured server URL from AppConfig (environment variable)
-        await prefs.setString('api_url', AppConfig.serverUrl);
-        _logger.debug('Server URL set in SharedPreferences: ${AppConfig.serverUrl}');
-      } else {
-        _logger.debug('Using existing URL from SharedPreferences: $currentUrl');
+      // Use relative URL if AppConfig.serverUrl is localhost, otherwise use the configured URL
+      String serverUrl = AppConfig.serverUrl;
+      if (serverUrl.contains('localhost') || serverUrl.contains('127.0.0.1')) {
+        // Use relative URLs to work with nginx proxy
+        serverUrl = '';
       }
+      
+      await prefs.setString('api_url', serverUrl);
+      _logger.debug('Server URL updated in SharedPreferences: $serverUrl');
+      BaseService.resetCachedUrl(); // Clear cached URL to force reload
     } catch (e) {
       _logger.error('Error setting server URL in SharedPreferences', e);
     }

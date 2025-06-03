@@ -58,13 +58,15 @@ abstract class BaseService {
     final baseUrl = await _getBaseUrl();
     _logger.debug('BaseService.createUri - baseUrl from SharedPreferences: $baseUrl');
     
+    // Build full URL - if baseUrl is empty, use relative URLs (for nginx proxy)
+    String fullUrl;
     if (baseUrl == null || baseUrl.isEmpty) {
-      _logger.error('Server URL not configured - baseUrl is null/empty');
-      throw Exception('Server URL not configured. Please check your connection settings.');
+      // Use relative URLs - nginx will proxy to backend
+      fullUrl = path;
+      _logger.debug('Using relative URL for nginx proxy: $fullUrl');
+    } else {
+      fullUrl = baseUrl + path;
     }
-    
-    // Build full URL
-    String fullUrl = baseUrl + path;
     _logger.debug('BaseService.createUri - constructed URL: $fullUrl');
     
     // Convert all query parameter values to strings
