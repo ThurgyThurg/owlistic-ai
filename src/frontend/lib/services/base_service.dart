@@ -105,6 +105,7 @@ abstract class BaseService {
   Future<http.Response> authenticatedGet(String path, {Map<String, dynamic>? queryParameters}) async {
     final uri = await createUri(path, queryParameters: queryParameters);
     _logger.debug('GET: $uri');
+    print('🔥 ACTUAL GET URL: $uri'); // Force console output for debugging
     
     try {
       // Always use getAuthHeaders to get the current token
@@ -120,6 +121,7 @@ abstract class BaseService {
   Future<http.Response> authenticatedPost(String path, dynamic body, {Map<String, dynamic>? queryParameters}) async {
     final uri = await createUri(path, queryParameters: queryParameters);
     _logger.debug('POST: $uri');
+    print('🔥 ACTUAL POST URL: $uri'); // Force console output for debugging
     
     try {
       final bodyJson = jsonEncode(body);

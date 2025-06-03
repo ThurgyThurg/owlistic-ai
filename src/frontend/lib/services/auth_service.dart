@@ -205,6 +205,7 @@ class AuthService extends BaseService {
       
       await prefs.setString('api_url', serverUrl);
       _logger.debug('Server URL updated in SharedPreferences: $serverUrl');
+      print('🔥 AUTH SERVICE: Set API URL to: "$serverUrl" (empty = relative URLs)');
       BaseService.resetCachedUrl(); // Clear cached URL to force reload
     } catch (e) {
       _logger.error('Error setting server URL in SharedPreferences', e);
