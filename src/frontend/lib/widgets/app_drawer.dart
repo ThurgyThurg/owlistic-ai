@@ -66,6 +66,14 @@ class SidebarDrawer extends StatelessWidget {
               GoRouter.of(context).go('/tasks');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.smart_toy),
+            title: const Text('AI Dashboard'),
+            onTap: () {
+              Navigator.pop(context);
+              GoRouter.of(context).go('/ai-dashboard');
+            },
+          ),
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.delete),

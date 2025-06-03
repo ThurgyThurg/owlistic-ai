@@ -44,6 +44,7 @@ func (ar *AIRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
 		aiGroup.GET("/agents/runs", ar.getAgentRuns)
 		aiGroup.GET("/agents/runs/:id", ar.getAgentRun)
 		aiGroup.POST("/agents/quick-goal", ar.quickGoalAgent)
+		aiGroup.POST("/agents/task-breakdown", ar.breakDownTask)
 		
 		// AI Chat/Memory
 		aiGroup.POST("/chat", ar.chatWithAI)
@@ -546,4 +547,57 @@ func (ar *AIRoutes) getChatHistory(c *gin.Context) {
 		"session_id": sessionID,
 		"messages":   messages,
 	})
+}
+
+// breakDownTask uses AI to break down a goal into manageable steps
+func (ar *AIRoutes) breakDownTask(c *gin.Context) {
+	var request struct {
+		Goal        string                 `json:"goal" binding:"required"`
+		Context     string                 `json:"context"`
+		TimeFrame   string                 `json:"time_frame"`
+		MaxSteps    int                    `json:"max_steps"`
+		Priority    string                 `json:"priority"`
+		Preferences map[string]interface{} `json:"preferences"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Call AI service to break down the task
+	breakdown, err := ar.aiService.BreakDownTask(c.Request.Context(), request.Goal, request.Context, request.MaxSteps)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to break down task: " + err.Error()})
+		return
+	}
+
+	// Store the task breakdown as an AI agent run for tracking
+	agent := models.AIAgent{
+		UserID:    userID.(uuid.UUID),
+		AgentType: "task_breakdown",
+		Status:    "completed",
+		InputData: map[string]interface{}{
+			"goal":         request.Goal,
+			"context":      request.Context,
+			"time_frame":   request.TimeFrame,
+			"max_steps":    request.MaxSteps,
+			"priority":     request.Priority,
+			"preferences":  request.Preferences,
+		},
+		OutputData: breakdown,
+	}
+
+	if err := ar.db.Create(&agent).Error; err != nil {
+		// Log error but don't fail the request
+		println("Failed to store agent run:", err.Error())
+	}
+
+	c.JSON(http.StatusOK, breakdown)
 }

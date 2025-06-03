@@ -15,6 +15,7 @@ import 'package:owlistic/screens/tasks_screen.dart';
 import 'package:owlistic/screens/trash_screen.dart';
 import 'package:owlistic/screens/user_profile_screen.dart';
 import 'package:owlistic/screens/settings_screen.dart';
+import 'package:owlistic/screens/ai_dashboard_screen.dart';
 import 'package:owlistic/utils/logger.dart';
 
 class AppRouter {
@@ -100,6 +101,10 @@ class AppRouter {
         GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/ai-dashboard',
+          builder: (context, state) => const AIDashboardScreen(),
         ),
       ],
     );

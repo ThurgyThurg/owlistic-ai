@@ -971,6 +971,151 @@ func (ai *AIService) queryChromaForSimilar(ctx context.Context, embedding []floa
 	return relatedIDs, nil
 }
 
+// BreakDownTask uses AI to break down a goal into manageable steps
+func (ai *AIService) BreakDownTask(ctx context.Context, goal, context string, maxSteps int) (map[string]interface{}, error) {
+	if maxSteps <= 0 {
+		maxSteps = 8
+	}
+
+	contextPart := ""
+	if context != "" {
+		contextPart = fmt.Sprintf("\n\nAdditional Context: %s", context)
+	}
+
+	prompt := fmt.Sprintf(`You are an expert project planner and task breakdown specialist. Break down the following goal into a structured, actionable plan.
+
+Goal: %s%s
+
+Please provide a detailed task breakdown with the following structure:
+
+1. Analyze the goal and provide:
+   - Estimated overall timeframe
+   - Complexity level (Low/Medium/High)
+   - Prerequisites (if any)
+   - Required resources or tools
+
+2. Break the goal into %d or fewer clear, sequential steps. For each step include:
+   - Step number
+   - Clear, actionable title
+   - Detailed description (2-3 sentences)
+   - Estimated duration
+   - Difficulty level (Easy/Medium/Hard)
+   - Key deliverables
+   - Dependencies on other steps (if any)
+
+Return the response as valid JSON with this exact structure:
+{
+  "goal": "original goal text",
+  "estimated_timeframe": "e.g., 2-4 weeks",
+  "complexity": "Low/Medium/High",
+  "prerequisites": ["prerequisite 1", "prerequisite 2"],
+  "resources": ["resource 1", "resource 2"],
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Step title",
+      "description": "Detailed description",
+      "estimated_duration": "e.g., 2-3 days",
+      "difficulty": "Easy/Medium/Hard",
+      "deliverables": ["deliverable 1", "deliverable 2"],
+      "dependencies": ["step 2", "step 3"]
+    }
+  ]
+}
+
+Make sure the JSON is valid and complete. Focus on practical, achievable steps that build toward the goal logically.`, goal, contextPart, maxSteps)
+
+	response, err := ai.callAnthropic(ctx, prompt, 2000)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call AI service: %w", err)
+	}
+
+	// Try to parse the response as JSON
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(response), &result); err != nil {
+		// If JSON parsing fails, create a fallback response
+		log.Printf("Failed to parse AI response as JSON: %v", err)
+		log.Printf("Raw response: %s", response)
+		
+		return ai.createFallbackBreakdown(goal, context, maxSteps), nil
+	}
+
+	// Validate that we have the required fields
+	if _, ok := result["goal"]; !ok {
+		result["goal"] = goal
+	}
+	if _, ok := result["steps"]; !ok {
+		return ai.createFallbackBreakdown(goal, context, maxSteps), nil
+	}
+
+	return result, nil
+}
+
+// createFallbackBreakdown creates a basic breakdown when AI parsing fails
+func (ai *AIService) createFallbackBreakdown(goal, context string, maxSteps int) map[string]interface{} {
+	steps := []map[string]interface{}{
+		{
+			"step_number":       1,
+			"title":            "Research and Planning",
+			"description":      "Research the requirements and create a detailed plan for achieving the goal.",
+			"estimated_duration": "1-2 days",
+			"difficulty":       "Easy",
+			"deliverables":     []string{"Research notes", "Project plan"},
+			"dependencies":     []string{},
+		},
+		{
+			"step_number":       2,
+			"title":            "Setup and Preparation",
+			"description":      "Set up the necessary tools, environment, and resources needed to start working.",
+			"estimated_duration": "1-2 days",
+			"difficulty":       "Medium",
+			"deliverables":     []string{"Working environment", "Required tools"},
+			"dependencies":     []string{"Research and Planning"},
+		},
+		{
+			"step_number":       3,
+			"title":            "Implementation Phase 1",
+			"description":      "Begin the core work toward achieving the goal, focusing on foundational elements.",
+			"estimated_duration": "3-5 days",
+			"difficulty":       "Medium",
+			"deliverables":     []string{"Core foundation", "Initial progress"},
+			"dependencies":     []string{"Setup and Preparation"},
+		},
+		{
+			"step_number":       4,
+			"title":            "Review and Refinement",
+			"description":      "Review progress, gather feedback, and refine the approach based on learnings.",
+			"estimated_duration": "1-2 days",
+			"difficulty":       "Easy",
+			"deliverables":     []string{"Progress review", "Refined plan"},
+			"dependencies":     []string{"Implementation Phase 1"},
+		},
+		{
+			"step_number":       5,
+			"title":            "Completion and Validation",
+			"description":      "Complete the remaining work and validate that the goal has been achieved.",
+			"estimated_duration": "2-3 days",
+			"difficulty":       "Medium",
+			"deliverables":     []string{"Completed goal", "Validation results"},
+			"dependencies":     []string{"Review and Refinement"},
+		},
+	}
+
+	// Limit to maxSteps
+	if len(steps) > maxSteps {
+		steps = steps[:maxSteps]
+	}
+
+	return map[string]interface{}{
+		"goal":                goal,
+		"estimated_timeframe": "1-2 weeks",
+		"complexity":          "Medium",
+		"prerequisites":       []string{"Basic understanding of the domain"},
+		"resources":           []string{"Time commitment", "Learning resources"},
+		"steps":              steps,
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

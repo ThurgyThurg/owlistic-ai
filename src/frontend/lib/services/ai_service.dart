@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:owlistic/utils/logger.dart';
+import '../models/ai_project.dart';
 import 'base_service.dart';
 
 class AIService extends BaseService {
@@ -97,14 +98,17 @@ class AIService extends BaseService {
   }
 
   /// Get all AI projects
-  Future<List<dynamic>> getAIProjects() async {
+  Future<Map<String, dynamic>> getAIProjects() async {
     try {
       _logger.info('Fetching AI projects');
       
       final response = await authenticatedGet('/api/v1/ai/projects');
       final data = jsonDecode(response.body);
       
-      return data is List ? data : [data];
+      return {
+        'status': 'success',
+        'data': data is List ? data : [data],
+      };
     } catch (e) {
       _logger.error('Failed to fetch AI projects: $e');
       rethrow;
@@ -190,7 +194,7 @@ class AIService extends BaseService {
   }
 
   /// Get agent runs
-  Future<List<dynamic>> getAgentRuns({int limit = 20}) async {
+  Future<Map<String, dynamic>> getAgentRuns({int limit = 20}) async {
     try {
       _logger.info('Fetching agent runs');
       
@@ -198,7 +202,10 @@ class AIService extends BaseService {
         queryParameters: {'limit': limit});
       final data = jsonDecode(response.body);
       
-      return data is List ? data : [data];
+      return {
+        'status': 'success',
+        'data': data is List ? data : [data],
+      };
     } catch (e) {
       _logger.error('Failed to fetch agent runs: $e');
       rethrow;
@@ -272,6 +279,44 @@ class AIService extends BaseService {
       return data;
     } catch (e) {
       _logger.error('Failed to fetch chat history: $e');
+      rethrow;
+    }
+  }
+
+  /// Break down a task into manageable steps using AI
+  Future<Map<String, dynamic>> breakDownTask(TaskBreakdownRequest request) async {
+    try {
+      _logger.info('Breaking down task: ${request.goal}');
+      
+      final response = await authenticatedPost('/api/v1/ai/agents/task-breakdown', request.toJson());
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      _logger.info('Task breakdown completed');
+      return {
+        'status': 'success',
+        'data': data,
+      };
+    } catch (e) {
+      _logger.error('Failed to break down task: $e');
+      rethrow;
+    }
+  }
+
+  /// Create AI project from JSON data
+  Future<Map<String, dynamic>> createAIProject(Map<String, dynamic> projectData) async {
+    try {
+      _logger.info('Creating AI project: ${projectData['name']}');
+      
+      final response = await authenticatedPost('/api/v1/ai/projects', projectData);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      _logger.info('AI project created: ${data['id']}');
+      return {
+        'status': 'success',
+        'data': data,
+      };
+    } catch (e) {
+      _logger.error('Failed to create AI project: $e');
       rethrow;
     }
   }
