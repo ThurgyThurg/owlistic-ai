@@ -11,7 +11,7 @@ services:
       - nats
       - chroma
     environment:
-      - APP_ORIGINS=http://localhost*,http://owlistic*,http://owlistic-app*,http://*:8080,http://*:80,${SERVER_URL}*
+      - APP_ORIGINS=http://localhost*,http://owlistic*,http://owlistic-app*,http://*:8080,http://*:80,${SERVER_URL}*,https://secondbrain.graham29.com,http://secondbrain.graham29.com
       - BROKER_ADDRESS=nats:4222
       - DB_HOST=postgres
       - DB_PORT=5432
