@@ -195,10 +195,7 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
   @override
   Stream<bool> get authStateChanges => _authService.authStateChanges;
   
-  @override
-  void navigateToRegister(BuildContext context) {
-    context.go('/register');
-  }
+  // navigateToRegister removed - single user system
   
   @override
   void navigateAfterSuccessfulLogin(BuildContext context) {

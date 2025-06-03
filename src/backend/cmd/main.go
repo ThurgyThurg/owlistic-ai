@@ -109,6 +109,16 @@ func main() {
 	aiRoutes := routes.NewAIRoutes(db.DB)
 	aiRoutes.RegisterRoutes(protectedGroup)
 
+	// Register Calendar routes on protected group
+	calendarRoutes, err := routes.NewCalendarRoutes(db.DB)
+	if err != nil {
+		log.Printf("Failed to initialize calendar routes: %v", err)
+		log.Printf("Calendar functionality will not be available")
+	} else {
+		calendarRoutes.RegisterRoutes(protectedGroup)
+		log.Println("Calendar routes registered successfully")
+	}
+
 	// Initialize Telegram service and routes
 	aiService := services.NewAIService(db.DB)
 	telegramService, err := services.NewTelegramService(db.DB, aiService)

@@ -17,6 +17,10 @@ type Config struct {
 	DBName             string
 	JWTSecret          string
 	JWTExpirationHours int
+	// Single user configuration
+	UserUsername       string
+	UserEmail          string
+	UserPassword       string
 }
 
 func getEnv(key, defaultValue string) string {
@@ -51,6 +55,10 @@ func Load() Config {
 		DBName:             getEnv("DB_NAME", "owlistic"),
 		JWTSecret:          getEnv("JWT_SECRET", "your-super-secret-key-change-this-in-production"),
 		JWTExpirationHours: getEnvAsInt("JWT_EXPIRATION_HOURS", 24),
+		// Single user configuration
+		UserUsername:       getEnv("USER_USERNAME", "admin"),
+		UserEmail:          getEnv("USER_EMAIL", "admin@owlistic.local"),
+		UserPassword:       getEnv("USER_PASSWORD", "admin123"),
 	}
 	Print(cfg)
 
@@ -68,4 +76,6 @@ func Print(cfg Config) {
 	log.Printf("DB Password: %s\n", cfg.DBPassword)
 	log.Printf("JWT Secret: %s\n", cfg.JWTSecret)
 	log.Printf("JWT Expiration Hours: %d\n", cfg.JWTExpirationHours)
+	log.Printf("Single User Email: %s\n", cfg.UserEmail)
+	log.Printf("Single User Username: %s\n", cfg.UserUsername)
 }

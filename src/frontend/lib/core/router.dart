@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:owlistic/viewmodel/login_viewmodel.dart';
 import 'package:owlistic/screens/home_screen.dart';
 import 'package:owlistic/screens/login_screen.dart';
-import 'package:owlistic/screens/register_screen.dart';
+// register_screen.dart import removed - single user system
 import 'package:owlistic/screens/notebooks_screen.dart';
 import 'package:owlistic/screens/notebook_detail_screen.dart';
 import 'package:owlistic/screens/notes_screen.dart';
@@ -34,17 +34,16 @@ class AppRouter {
         final loginViewModel = context.read<LoginViewModel>();
         final bool isLoggedIn = loginViewModel.isLoggedIn;
         final bool isLoggingIn = state.fullPath == '/login';
-        final bool isRegistering = state.fullPath == '/register';
         
         _logger.debug('GoRouter redirect: isLoggedIn=$isLoggedIn, currentPath=${state.fullPath}');
         
-        // If not logged in and not on login or register page, redirect to login
-        if (!isLoggedIn && !isLoggingIn && !isRegistering) {
+        // If not logged in and not on login page, redirect to login
+        if (!isLoggedIn && !isLoggingIn) {
           return '/login';
         }
         
-        // If logged in and on login or register page, redirect to home
-        if (isLoggedIn && (isLoggingIn || isRegistering)) {
+        // If logged in and on login page, redirect to home
+        if (isLoggedIn && isLoggingIn) {
           return '/';
         }
         
@@ -60,10 +59,7 @@ class AppRouter {
           path: '/login',
           builder: (context, state) => const LoginScreen(),
         ),
-        GoRoute(
-          path: '/register',
-          builder: (context, state) => const RegisterScreen(),
-        ),
+        // Register route removed - single user system
         GoRoute(
           path: '/notebooks',
           builder: (context, state) => const NotebooksScreen(),

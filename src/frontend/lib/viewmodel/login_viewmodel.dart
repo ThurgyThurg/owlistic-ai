@@ -24,8 +24,7 @@ abstract class LoginViewModel extends BaseViewModel {
   Future<User?> get currentUser;
   Stream<bool> get authStateChanges;
   
-  /// Navigation methods
-  void navigateToRegister(BuildContext context);
+  // Navigation to register removed - single user system
   
   /// Navigate after successful login - allows screens to navigate properly
   void navigateAfterSuccessfulLogin(BuildContext context);

@@ -18,10 +18,11 @@ import (
 )
 
 type TelegramService struct {
-	db          *gorm.DB
-	bot         *tgbotapi.BotAPI
-	aiService   *AIService
-	allowedChatID int64
+	db              *gorm.DB
+	bot             *tgbotapi.BotAPI
+	aiService       *AIService
+	calendarService *CalendarService
+	allowedChatID   int64
 }
 
 type MessageIntent struct {
@@ -59,13 +60,21 @@ func NewTelegramService(db *gorm.DB, aiService *AIService) (*TelegramService, er
 		return nil, fmt.Errorf("failed to create Telegram bot: %w", err)
 	}
 
+	// Initialize calendar service (optional - will be nil if not configured)
+	calendarService, err := NewCalendarService(db)
+	if err != nil {
+		log.Printf("Calendar service not available: %v", err)
+		calendarService = nil
+	}
+
 	log.Printf("Telegram bot authorized on account %s", bot.Self.UserName)
 
 	return &TelegramService{
-		db:            db,
-		bot:           bot,
-		aiService:     aiService,
-		allowedChatID: chatID,
+		db:              db,
+		bot:             bot,
+		aiService:       aiService,
+		calendarService: calendarService,
+		allowedChatID:   chatID,
 	}, nil
 }
 
@@ -239,17 +248,90 @@ func (ts *TelegramService) handleMessageByIntent(ctx context.Context, userID uui
 	}
 }
 
-// handleCalendarEvent creates a calendar event (placeholder for now)
+// handleCalendarEvent creates a calendar event
 func (ts *TelegramService) handleCalendarEvent(ctx context.Context, userID uuid.UUID, messageText string, intent *MessageIntent) string {
-	// For now, create as a task with calendar metadata until calendar integration is implemented
+	// Check if calendar service is available and user has calendar access
+	if ts.calendarService == nil {
+		return ts.handleCalendarEventFallback(ctx, userID, messageText, intent)
+	}
+
+	if !ts.calendarService.HasCalendarAccess(ctx, userID) {
+		return "📅 Calendar event detected, but you haven't connected your Google Calendar yet.\n\n" +
+			"Use `/api/v1/calendar/oauth/authorize` to connect your calendar, then try again.\n\n" +
+			"For now, I'll save this as a task:\n\n" + ts.handleCalendarEventFallback(ctx, userID, messageText, intent)
+	}
+
+	// Extract calendar event details from AI
 	title := messageText
 	if extractedTitle, ok := intent.ExtractedData["title"].(string); ok && extractedTitle != "" {
 		title = extractedTitle
 	}
 
+	// Parse date/time from extracted data or use AI to extract it
+	startTime, endTime, allDay := ts.parseEventDateTime(intent.ExtractedData, messageText)
+
+	// Create calendar event request
+	request := CalendarEventRequest{
+		Title:       title,
+		Description: fmt.Sprintf("Created from Telegram: %s", messageText),
+		StartTime:   startTime,
+		EndTime:     endTime,
+		AllDay:      allDay,
+		CalendarID:  "primary", // Use primary calendar
+	}
+
+	// Create the calendar event
+	event, err := ts.calendarService.CreateEvent(ctx, userID, request)
+	if err != nil {
+		log.Printf("Failed to create calendar event: %v", err)
+		return "❌ Sorry, I couldn't create your calendar event. " + err.Error() + "\n\n" +
+			"Falling back to task creation:\n\n" + ts.handleCalendarEventFallback(ctx, userID, messageText, intent)
+	}
+
+	// Format response
+	timeStr := ""
+	if allDay {
+		timeStr = fmt.Sprintf("📅 %s", startTime.Format("January 2, 2006"))
+	} else {
+		timeStr = fmt.Sprintf("📅 %s at %s", startTime.Format("January 2, 2006"), startTime.Format("3:04 PM"))
+	}
+
+	return fmt.Sprintf("📅 Calendar event created successfully!\n\n"+
+		"**%s**\n%s\n\n"+
+		"✅ Added to your Google Calendar\n"+
+		"🔗 Event ID: %s", event.Title, timeStr, event.ID)
+}
+
+// handleCalendarEventFallback creates a task when calendar integration isn't available
+func (ts *TelegramService) handleCalendarEventFallback(ctx context.Context, userID uuid.UUID, messageText string, intent *MessageIntent) string {
+	title := messageText
+	if extractedTitle, ok := intent.ExtractedData["title"].(string); ok && extractedTitle != "" {
+		title = extractedTitle
+	}
+
+	// Get or create a default notebook for Telegram messages
+	notebook, err := ts.getOrCreateTelegramNotebook(ctx, userID)
+	if err != nil {
+		log.Printf("Failed to get/create Telegram notebook: %v", err)
+		return "❌ Sorry, I couldn't create your calendar event. Please try again."
+	}
+
+	// Create a note for the calendar event
+	note := models.Note{
+		UserID:     userID,
+		NotebookID: notebook.ID,
+		Title:      fmt.Sprintf("📅 Calendar: %s", title),
+		Tags:       pq.StringArray{"telegram", "calendar", "event"},
+	}
+
+	if err := ts.db.WithContext(ctx).Create(&note).Error; err != nil {
+		log.Printf("Failed to create calendar note: %v", err)
+		return "❌ Sorry, I couldn't create your calendar event. Please try again."
+	}
+
 	task := models.Task{
 		UserID:      userID,
-		NoteID:      uuid.New(), // Temporary - should link to a calendar note
+		NoteID:      note.ID,
 		Title:       title,
 		Description: fmt.Sprintf("Calendar event from Telegram: %s", messageText),
 		IsCompleted: false,
@@ -268,7 +350,61 @@ func (ts *TelegramService) handleCalendarEvent(ctx context.Context, userID uuid.
 		return "❌ Sorry, I couldn't save your calendar event. Please try again."
 	}
 
-	return fmt.Sprintf("📅 Calendar event saved as task: \"%s\"\n\n⚠️ Note: Full calendar integration is coming soon. For now, this is saved as a task.", task.Title)
+	return fmt.Sprintf("📅 Calendar event saved as task: \"%s\"\n📝 Note ID: %s\n\n⚠️ Connect your Google Calendar for full calendar integration!", task.Title, note.ID)
+}
+
+// parseEventDateTime extracts and parses date/time information from the AI extracted data
+func (ts *TelegramService) parseEventDateTime(extractedData map[string]interface{}, messageText string) (startTime, endTime time.Time, allDay bool) {
+	now := time.Now()
+	
+	// Try to get parsed datetime from extracted data
+	if dateTimeStr, ok := extractedData["date_time"].(string); ok && dateTimeStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, dateTimeStr); err == nil {
+			startTime = parsed
+		}
+	}
+
+	// If no specific time was extracted, try to parse from duration
+	if startTime.IsZero() {
+		// Default to tomorrow at a reasonable time if no specific time
+		startTime = time.Date(now.Year(), now.Month(), now.Day()+1, 14, 0, 0, 0, now.Location())
+		
+		// Check for time indicators in the message
+		msg := strings.ToLower(messageText)
+		if strings.Contains(msg, "today") {
+			startTime = time.Date(now.Year(), now.Month(), now.Day(), 14, 0, 0, 0, now.Location())
+		} else if strings.Contains(msg, "tomorrow") {
+			startTime = time.Date(now.Year(), now.Month(), now.Day()+1, 14, 0, 0, 0, now.Location())
+		}
+		
+		// Try to extract time from common patterns
+		if strings.Contains(msg, "morning") {
+			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 9, 0, 0, 0, startTime.Location())
+		} else if strings.Contains(msg, "afternoon") {
+			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 14, 0, 0, 0, startTime.Location())
+		} else if strings.Contains(msg, "evening") {
+			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 18, 0, 0, 0, startTime.Location())
+		}
+	}
+
+	// Try to get duration from extracted data
+	duration := 60 // Default 1 hour
+	if durationStr, ok := extractedData["duration"].(string); ok && durationStr != "" {
+		if parsed, err := strconv.Atoi(durationStr); err == nil {
+			duration = parsed
+		}
+	}
+
+	// Set end time
+	endTime = startTime.Add(time.Duration(duration) * time.Minute)
+
+	// Determine if it's all day (no specific time mentioned)
+	allDay = !strings.Contains(strings.ToLower(messageText), "at ") && 
+		!strings.Contains(strings.ToLower(messageText), "pm") && 
+		!strings.Contains(strings.ToLower(messageText), "am") &&
+		startTime.Hour() == 14 && startTime.Minute() == 0 // Default time we set
+
+	return startTime, endTime, allDay
 }
 
 // handleTask creates a new task

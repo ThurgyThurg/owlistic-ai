@@ -243,15 +243,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('Log in', style: TextStyle(fontSize: 16)),
                       ),
                       
-                      const SizedBox(height: 16),
-                      
-                      // Register link
-                      TextButton(
-                        onPressed: () {
-                          loginViewModel.navigateToRegister(context);
-                        },
-                        child: const Text('Don\'t have an account? Register now'),
-                      ),
                     ],
                   ),
                 ),

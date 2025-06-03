@@ -15,8 +15,7 @@ import (
 )
 
 func RegisterPublicUserRoutes(group *gin.RouterGroup, db *database.Database, userService services.UserServiceInterface, authService services.AuthServiceInterface) {
-	// Public registration endpoint - no auth required
-	group.POST("/register", func(c *gin.Context) { CreateUser(c, db, userService) })
+	// No public registration endpoint - single user system
 }
 
 func RegisterProtectedUserRoutes(group *gin.RouterGroup, db *database.Database, userService services.UserServiceInterface, authService services.AuthServiceInterface) {
@@ -30,41 +29,7 @@ func RegisterProtectedUserRoutes(group *gin.RouterGroup, db *database.Database, 
 	group.PUT("/users/:id/password", func(c *gin.Context) { UpdateUserPassword(c, db, userService, authService) })
 }
 
-func CreateUser(c *gin.Context, db *database.Database, userService services.UserServiceInterface) {
-	var req models.UserRegistrationInput
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if req.Username == "" {
-        emailParts := strings.Split(req.Email, "@")
-        if len(emailParts) > 0 {
-            req.Username = emailParts[0]
-        }
-    }
-
-	// Create user data map from request
-	userData := map[string]interface{}{
-		"email":        req.Email,
-		"password":     req.Password,
-		"username":     req.Username,
-		"display_name": req.DisplayName,
-		"profile_pic":  req.ProfilePic,
-		"preferences":  req.Preferences,
-	}
-
-	createdUser, err := userService.CreateUser(db, userData)
-	if err != nil {
-		if errors.Is(err, services.ErrUserAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusCreated, createdUser)
-}
+// CreateUser function removed - single user system managed via environment variables
 
 func GetUserById(c *gin.Context, db *database.Database, userService services.UserServiceInterface) {
 	id := c.Param("id")

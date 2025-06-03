@@ -45,6 +45,13 @@ func Setup(cfg config.Config) (*Database, error) {
 	}
 	log.Println("Database migrations completed successfully")
 
+	// Create single user from environment variables
+	log.Println("Setting up single user from environment variables...")
+	if err := SetupSingleUser(db, cfg); err != nil {
+		return nil, fmt.Errorf("failed to setup single user: %w", err)
+	}
+	log.Println("Single user setup completed successfully")
+
 	return &Database{DB: db}, nil
 }
 
