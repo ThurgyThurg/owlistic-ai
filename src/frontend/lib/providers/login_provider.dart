@@ -6,6 +6,7 @@ import 'package:owlistic/services/websocket_service.dart';
 import 'package:owlistic/viewmodel/login_viewmodel.dart';
 import 'package:owlistic/models/user.dart';
 import 'package:owlistic/utils/logger.dart';
+import 'package:owlistic/config/app_config.dart';
 
 class LoginProvider with ChangeNotifier implements LoginViewModel {
   final Logger _logger = Logger('LoginProvider');
@@ -17,7 +18,6 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
   bool _isActive = false;
   bool _isInitialized = false;
   String? _errorMessage;
-  String? _serverUrl;
   
   // Constructor with dependency injection
   LoginProvider({
@@ -34,13 +34,8 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
     try {
       _logger.info('Initializing auth state');
       
-      // Load server URL from SharedPreferences
-      await _loadServerUrl();
-      
-      // Set server URL in WebSocketService
-      if (_serverUrl != null) {
-        _webSocketService.setServerUrl(_serverUrl);
-      }
+      // Set server URL from environment configuration
+      _webSocketService.setServerUrl(AppConfig.defaultServerUrl);
       
       // Initialize auth service
       await _authService.initialize();
@@ -70,17 +65,6 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
       }
     } catch (e) {
       _logger.error('Error initializing auth state', e);
-    }
-  }
-  
-  // Load server URL from SharedPreferences
-  Future<void> _loadServerUrl() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _serverUrl = prefs.getString('api_url');
-      _logger.debug('Loaded server URL: $_serverUrl');
-    } catch (e) {
-      _logger.error('Error loading server URL from preferences', e);
     }
   }
   
@@ -163,26 +147,17 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
     }
   }
   
-  // Save server URL to SharedPreferences
+  // Server URL is now managed via environment configuration
   @override
   Future<void> saveServerUrl(String url) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('api_url', url);
-      _serverUrl = url;
-      // Update WebSocketService with the new URL
-      _webSocketService.setServerUrl(url);
-      _logger.info('Server URL saved: $url');
-      notifyListeners();
-    } catch (e) {
-      _logger.error('Error saving server URL', e);
-    }
+    _logger.info('Server URL is configured via environment - ignoring save request');
+    // No-op: Server URL is now configured via environment variables
   }
   
-  // Get the current server URL
+  // Get the current server URL from configuration
   @override
   String? getServerUrl() {
-    return _serverUrl;
+    return AppConfig.defaultServerUrl;
   }
   
   @override
