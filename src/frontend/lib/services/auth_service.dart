@@ -452,20 +452,36 @@ class AuthService extends BaseService {
   // Get user info for single-user mode
   Future<User?> getCurrentUser() async {
     try {
-      // For single-user mode, return a mock user
-      return User(
-        id: 'single-user',
-        email: 'user@example.com',
-        username: 'user',
-        displayName: 'User',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        preferences: {},
+      // For single-user mode, fetch the actual user from the backend
+      // Use the dedicated current user endpoint
+      final response = await http.get(
+        Uri.parse('${await _getServerUrl()}/api/v1/users/current'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (_token != null) 'Authorization': 'Bearer $_token',
+        },
       );
+      
+      if (response.statusCode == 200) {
+        final userJson = json.decode(response.body) as Map<String, dynamic>;
+        return User.fromJson(userJson);
+      } else {
+        _logger.warning('Failed to fetch current user from backend (${response.statusCode}), using fallback');
+      }
     } catch (e) {
-      _logger.error('Error getting current user', e);
-      return null;
+      _logger.error('Error getting current user from backend', e);
     }
+    
+    // Fallback to mock user if API fails or no users found
+    return User(
+      id: 'single-user',
+      email: 'user@example.com',
+      username: 'user',
+      displayName: 'User',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      preferences: {},
+    );
   }
   
 

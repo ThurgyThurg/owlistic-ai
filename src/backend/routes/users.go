@@ -15,7 +15,8 @@ import (
 )
 
 func RegisterPublicUserRoutes(group *gin.RouterGroup, db *database.Database, userService services.UserServiceInterface, authService services.AuthServiceInterface) {
-	// No public registration endpoint - single user system
+	// Single-user mode endpoint to get the current user
+	group.GET("/users/current", func(c *gin.Context) { GetCurrentUser(c, db) })
 }
 
 func RegisterProtectedUserRoutes(group *gin.RouterGroup, db *database.Database, userService services.UserServiceInterface, authService services.AuthServiceInterface) {
@@ -332,4 +333,14 @@ func UpdateUserPassword(c *gin.Context, db *database.Database, userService servi
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+}
+
+// GetCurrentUser returns the first user in the database for single-user mode
+func GetCurrentUser(c *gin.Context, db *database.Database) {
+	var user models.User
+	if err := db.DB.First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No user found"})
+		return
+	}
+	c.JSON(http.StatusOK, user)
 }
