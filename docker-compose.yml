@@ -10,9 +10,9 @@ services:
       postgres:
         condition: service_healthy
       nats:
-        condition: service_healthy
+        condition: service_started
       chroma:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     environment:
       - APP_ORIGINS=http://localhost*,http://owlistic*,http://owlistic-app*,http://*:8080,http://*:80,${SERVER_URL}*,https://secondbrain.graham29.com,http://secondbrain.graham29.com
@@ -91,7 +91,7 @@ services:
     networks:
       - events
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8222/varz || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 4222 || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -109,7 +109,7 @@ services:
     networks:
       - server
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 8000 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
