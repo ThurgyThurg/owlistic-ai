@@ -12,10 +12,13 @@ import (
 	"owlistic-notes/owlistic/config"
 	"owlistic-notes/owlistic/database"
 	"owlistic-notes/owlistic/middleware"
+	"owlistic-notes/owlistic/models"
 	"owlistic-notes/owlistic/routes"
 	"owlistic-notes/owlistic/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -49,6 +52,11 @@ func main() {
 	services.BlockServiceInstance = services.NewBlockService()
 	services.TaskServiceInstance = services.NewTaskService()
 	services.TrashServiceInstance = services.NewTrashService()
+
+	// Initialize single user for single-user mode
+	if err := initializeSingleUser(db, cfg); err != nil {
+		log.Printf("Warning: Failed to initialize single user: %v", err)
+	}
 
 	// Initialize eventHandler service with the database
 	eventHandlerService := services.NewEventHandlerService(db)
@@ -172,4 +180,43 @@ func main() {
 	if err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", cfg.AppPort), router); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+// initializeSingleUser creates the single user if it doesn't exist
+func initializeSingleUser(db *database.Database, cfg config.Config) error {
+	singleUserUUID, err := uuid.Parse("00000000-0000-0000-0000-000000000001")
+	if err != nil {
+		return fmt.Errorf("invalid single user UUID: %w", err)
+	}
+
+	// Check if user already exists
+	var existingUser models.User
+	err = db.DB.Where("id = ?", singleUserUUID).First(&existingUser).Error
+	if err == nil {
+		// User already exists
+		log.Printf("Single user already exists: %s", existingUser.Email)
+		return nil
+	}
+
+	// User doesn't exist, create it
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.UserPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	user := models.User{
+		ID:           singleUserUUID,
+		Username:     cfg.UserUsername,
+		Email:        cfg.UserEmail,
+		PasswordHash: string(hashedPassword),
+		DisplayName:  cfg.UserUsername,
+		Preferences:  make(map[string]interface{}),
+	}
+
+	if err := db.DB.Create(&user).Error; err != nil {
+		return fmt.Errorf("failed to create single user: %w", err)
+	}
+
+	log.Printf("Single user created successfully: %s (%s)", user.Email, user.Username)
+	return nil
 }

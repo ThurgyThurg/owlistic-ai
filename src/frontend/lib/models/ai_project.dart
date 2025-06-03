@@ -173,9 +173,28 @@ class TaskBreakdownResponse {
   factory TaskBreakdownResponse.fromJson(Map<String, dynamic> json) {
     List<TaskStep> steps = [];
     if (json['steps'] != null && json['steps'] is List) {
-      steps = (json['steps'] as List)
-          .map((step) => TaskStep.fromJson(step))
-          .toList();
+      steps = (json['steps'] as List).asMap().entries.map((entry) {
+        final index = entry.key;
+        final step = entry.value;
+        
+        // Handle both simple string format (from backend) and object format
+        if (step is String) {
+          return TaskStep(
+            stepNumber: index + 1,
+            title: 'Step ${index + 1}',
+            description: step,
+          );
+        } else if (step is Map<String, dynamic>) {
+          return TaskStep.fromJson(step);
+        } else {
+          // Fallback for unexpected formats
+          return TaskStep(
+            stepNumber: index + 1,
+            title: 'Step ${index + 1}',
+            description: step.toString(),
+          );
+        }
+      }).toList();
     }
 
     List<String>? prerequisites;
