@@ -27,5 +27,24 @@ func Login(c *gin.Context, db *database.Database, authService services.AuthServi
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	// Get user information for complete response
+	var user models.User
+	if err := db.DB.Where("email = ?", loginInput.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user information"})
+		return
+	}
+
+	// Return complete login response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"token":   token,
+		"userId":  user.ID.String(),
+		"user": gin.H{
+			"id":           user.ID,
+			"email":        user.Email,
+			"username":     user.Username,
+			"display_name": user.DisplayName,
+			"profile_pic":  user.ProfilePic,
+		},
+	})
 }
