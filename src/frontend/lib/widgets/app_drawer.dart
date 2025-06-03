@@ -74,6 +74,14 @@ class SidebarDrawer extends StatelessWidget {
               GoRouter.of(context).go('/ai-dashboard');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.account_tree),
+            title: const Text('Knowledge Graph'),
+            onTap: () {
+              Navigator.pop(context);
+              GoRouter.of(context).go('/zettelkasten');
+            },
+          ),
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.delete),

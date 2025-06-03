@@ -10,7 +10,9 @@ import 'package:owlistic/services/websocket_service.dart';
 import 'package:owlistic/services/app_state_service.dart';
 import 'package:owlistic/services/block_service.dart';
 import 'package:owlistic/services/user_service.dart';
+import 'package:owlistic/services/zettelkasten_service.dart';
 import 'package:owlistic/utils/document_builder.dart';
+import 'package:owlistic/config/app_config.dart';
 
 // Import ViewModels
 import 'package:owlistic/viewmodel/notebooks_viewmodel.dart';
@@ -35,6 +37,7 @@ import 'package:owlistic/providers/login_provider.dart';
 import 'package:owlistic/providers/register_provider.dart';
 import 'package:owlistic/providers/home_provider.dart';
 import 'package:owlistic/providers/user_profile_provider.dart';
+import 'package:owlistic/providers/zettelkasten_provider.dart';
 
 /// ServiceLocator for dependency injection
 class ServiceLocator {
@@ -66,6 +69,10 @@ void setupServices() {
   final appStateService = AppStateService();
   final trashService = TrashService();
   final userService = UserService();
+  final zettelkastenService = ZettelkastenService(
+    baseUrl: AppConfig.defaultServerUrl,
+    authService: authService,
+  );
 
   // Initialize authService explicitly
   authService.initialize();
@@ -82,6 +89,7 @@ void setupServices() {
   ServiceLocator.register<AppStateService>(appStateService);
   ServiceLocator.register<TrashService>(trashService);
   ServiceLocator.register<UserService>(userService);
+  ServiceLocator.register<ZettelkastenService>(zettelkastenService);
 }
 
 /// List of all app providers with proper dependency injection
@@ -97,6 +105,7 @@ final List<SingleChildWidget> appProviders = [
   Provider<BlockService>(create: (_) => ServiceLocator.get<BlockService>()),
   Provider<TrashService>(create: (_) => ServiceLocator.get<TrashService>()),
   Provider<UserService>(create: (_) => ServiceLocator.get<UserService>()),
+  Provider<ZettelkastenService>(create: (_) => ServiceLocator.get<ZettelkastenService>()),
   
   // ViewModels
   ChangeNotifierProvider<ThemeViewModel>(
@@ -171,6 +180,11 @@ final List<SingleChildWidget> appProviders = [
     create: (context) => UserProfileProvider(
       userService: context.read<UserService>(),
       authService: context.read<AuthService>(),
+    ),
+  ),
+  ChangeNotifierProvider<ZettelkastenProvider>(
+    create: (context) => ZettelkastenProvider(
+      service: context.read<ZettelkastenService>(),
     ),
   ),
 ];

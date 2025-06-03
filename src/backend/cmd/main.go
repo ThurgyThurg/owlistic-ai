@@ -119,6 +119,16 @@ func main() {
 		log.Println("Calendar routes registered successfully")
 	}
 
+	// Register Zettelkasten routes on protected group
+	zettelRoutes, err := routes.NewZettelkastenRoutes(db.DB)
+	if err != nil {
+		log.Printf("Failed to initialize Zettelkasten routes: %v", err)
+		log.Printf("Zettelkasten functionality will not be available")
+	} else {
+		zettelRoutes.RegisterRoutes(protectedGroup)
+		log.Println("Zettelkasten routes registered successfully")
+	}
+
 	// Initialize Telegram service and routes
 	aiService := services.NewAIService(db.DB)
 	telegramService, err := services.NewTelegramService(db.DB, aiService)

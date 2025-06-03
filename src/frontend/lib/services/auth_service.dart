@@ -419,12 +419,10 @@ Future<String?> getCurrentUserId() async {
 
   Future<void> clearPreferences() async {
     try {
-      // First try to get from shared preferences for better performance
       final prefs = await SharedPreferences.getInstance();
-      prefs.clear();
+      await prefs.clear();
     } catch (e) {
-      _logger.error('Error getting current user ID', e);
-      return null;
+      _logger.error('Error clearing preferences', e);
     }
   }
   

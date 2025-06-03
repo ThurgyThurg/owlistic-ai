@@ -35,6 +35,12 @@ func RunMigrations(db *gorm.DB) error {
 		&models.CalendarSync{},
 		&models.CalendarReminder{},
 		&models.CalendarAttendee{},
+		// Zettelkasten models
+		&models.ZettelNode{},
+		&models.ZettelEdge{},
+		&models.ZettelTag{},
+		&models.ZettelGraph{},
+		&models.ZettelAnalysis{},
 	)
 
 	if err != nil {
