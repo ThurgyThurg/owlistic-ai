@@ -18,6 +18,7 @@
 - [Quick Links](#quick-links)
 - [Features](#features)
 - [Screenshots](#screenshots)
+- [AI Features](#ai-features)
 - [Installation](#install)
 - [Maintainers](#maintainers)
 - [Contributing](#contributing)
@@ -47,6 +48,9 @@
 - 🗑 Trash
 - 🌓 Dark/Light mode
 - ⬇️ Import markdown note
+- 🤖 AI-powered task breakdown and project planning
+- 🎯 Intelligent note enhancement with action steps and learning items
+- 📊 AI dashboard for managing projects and agents
 
 Please have a look at the [features](https://owlistic-notes.github.io/owlistic/docs/category/features) for details.
 
@@ -77,6 +81,57 @@ Please have a look at the [features](https://owlistic-notes.github.io/owlistic/d
 | <img src='./docs/website/static/img/screenshots/notebooks/notebooks.png' width="50%" title="Notebooks Screen" /> | <img src='./docs/website/static/img/screenshots/notes/notes.png' width="50%" title="Notes Screen" /> | <img src='./docs/website/static/img/screenshots/tasks/tasks.png' width="50%" title="Tasks Screen" /> |
 
 </details>
+
+## AI Features
+
+Owlistic now includes powerful AI capabilities to enhance your note-taking and productivity workflow. All AI features are powered by Anthropic's Claude and include intelligent fallbacks for robust operation.
+
+### 🤖 AI Dashboard
+
+The AI Dashboard serves as the central hub for all AI-powered features:
+
+- **Task Breakdown**: Enter any goal or complex task and AI will break it down into manageable, sequential steps
+- **Project Management**: Convert task breakdowns into trackable projects with metadata and progress tracking
+- **Agent History**: View and manage all AI agent runs and their execution status
+- **Calendar Integration Ready**: Steps include scheduling placeholders for future Google Calendar integration
+
+### 🎯 AI-Enhanced Notes
+
+Transform your notes with intelligent AI insights:
+
+- **Smart Summaries**: AI generates concise summaries of your note content
+- **Action Steps**: Automatically extract actionable tasks from your notes
+- **Learning Opportunities**: Identify concepts and knowledge gaps for further exploration
+- **AI Tags**: Intelligent tagging based on content analysis
+- **Related Notes**: Semantic search to find related content across your knowledge base
+- **Collapsible Interface**: Clean, organized display of AI insights that can be expanded/collapsed
+
+### 🧠 Agentic AI System
+
+Built on a robust agent architecture:
+
+- **AI Agent Models**: Complete data structures for agent runs, steps, and project management
+- **Agent Types**: Support for different agent behaviors (task breakdown, goal planning, reasoning loops)
+- **Status Tracking**: Real-time monitoring of agent execution with progress indicators
+- **Error Handling**: Robust error recovery and fallback mechanisms
+- **Background Processing**: Long-running AI tasks don't block the user interface
+
+### 🔧 Technical Implementation
+
+- **Backend Models**: Complete Go models for AI agents, projects, and enhanced notes
+- **REST API**: Full API coverage for all AI operations with proper authentication
+- **Vector Embeddings**: ChromaDB integration for semantic search and note similarity
+- **Claude Integration**: Anthropic Claude API integration with proper error handling and timeouts
+- **Structured Prompting**: Carefully crafted prompts for consistent, high-quality AI responses
+- **Fallback Systems**: Graceful degradation when AI services are unavailable
+
+### 🚀 Future Enhancements
+
+- **Google Calendar Integration**: Automatic scheduling of task breakdown steps
+- **Agent-to-Agent Communication**: Collaborative AI workflows
+- **Learning Adaptation**: AI that learns from your preferences and improves over time
+- **Workflow Automation**: Create custom AI workflows for repeated tasks
+- **Advanced Analytics**: Insights into your productivity patterns and AI usage
 
 ## Install
 
