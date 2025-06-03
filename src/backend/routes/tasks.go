@@ -31,8 +31,9 @@ func CreateTask(c *gin.Context, db *database.Database, taskService services.Task
 	// Get user ID from context and add it to task data
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	taskData["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -59,8 +60,9 @@ func GetTaskById(c *gin.Context, db *database.Database, taskService services.Tas
 	// Verify the authenticated user owns this task
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	userID := userIDInterface.(uuid.UUID)
 
@@ -83,8 +85,9 @@ func UpdateTask(c *gin.Context, db *database.Database, taskService services.Task
 	// Get user ID from context to verify ownership
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	userID := userIDInterface.(uuid.UUID)
 
@@ -122,8 +125,9 @@ func DeleteTask(c *gin.Context, db *database.Database, taskService services.Task
 	// Get user ID from context to verify ownership
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	userID := userIDInterface.(uuid.UUID)
 
@@ -161,8 +165,9 @@ func GetTasks(c *gin.Context, db *database.Database, taskService services.TaskSe
 	// Get user ID from context instead of query parameter
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 

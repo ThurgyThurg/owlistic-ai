@@ -49,10 +49,12 @@ func (aor *AgentOrchestratorRoutes) RegisterRoutes(router *gin.RouterGroup) {
 
 // executeChain starts execution of an agent chain
 func (aor *AgentOrchestratorRoutes) executeChain(c *gin.Context) {
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var req services.ChainExecutionRequest
@@ -161,10 +163,12 @@ func (aor *AgentOrchestratorRoutes) getChain(c *gin.Context) {
 
 // createChain creates a new agent chain
 func (aor *AgentOrchestratorRoutes) createChain(c *gin.Context) {
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var chain services.AgentChain

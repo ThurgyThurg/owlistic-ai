@@ -86,18 +86,28 @@ func main() {
 	// Register public routes (no auth required)
 	routes.RegisterAuthRoutes(publicGroup, db, authService)
 	routes.RegisterPublicUserRoutes(publicGroup, db, userService, authService)
+	
+	// Register AI routes on public group for single-user mode
+	aiRoutes := routes.NewAIRoutes(db.DB)
+	aiRoutes.RegisterRoutes(publicGroup)
+	
+	// Register Agent Orchestrator routes on public group for single-user mode
+	orchestratorRoutes := routes.NewAgentOrchestratorRoutes(db.DB)
+	orchestratorRoutes.RegisterRoutes(publicGroup)
 
-	// Create protected API group with auth middleware
+	// Register core routes on public group for single-user mode
+	routes.RegisterNoteRoutes(publicGroup, db, services.NoteServiceInstance)
+	routes.RegisterTaskRoutes(publicGroup, db, services.TaskServiceInstance)
+	routes.RegisterNotebookRoutes(publicGroup, db, services.NotebookServiceInstance)
+	routes.RegisterBlockRoutes(publicGroup, db, services.BlockServiceInstance)
+	routes.RegisterTrashRoutes(publicGroup, db, services.TrashServiceInstance)
+
+	// Create protected API group with auth middleware (for future multi-user features)
 	protectedGroup := router.Group("/api/v1")
 	protectedGroup.Use(middleware.AuthMiddleware(authService))
 
-	// Register protected API routes using the API group
+	// Register remaining protected API routes
 	routes.RegisterProtectedUserRoutes(protectedGroup, db, userService, authService)
-	routes.RegisterNoteRoutes(protectedGroup, db, services.NoteServiceInstance)
-	routes.RegisterTaskRoutes(protectedGroup, db, services.TaskServiceInstance)
-	routes.RegisterNotebookRoutes(protectedGroup, db, services.NotebookServiceInstance)
-	routes.RegisterBlockRoutes(protectedGroup, db, services.BlockServiceInstance)
-	routes.RegisterTrashRoutes(protectedGroup, db, services.TrashServiceInstance)
 	routes.RegisterRoleRoutes(protectedGroup, db, services.RoleServiceInstance)
 
 	// Register WebSocket routes with consistent auth middleware
@@ -105,13 +115,6 @@ func main() {
 	wsGroup.Use(middleware.AuthMiddleware(authService))
 	routes.RegisterWebSocketRoutes(wsGroup, webSocketService)
 
-	// Register AI routes on protected group
-	aiRoutes := routes.NewAIRoutes(db.DB)
-	aiRoutes.RegisterRoutes(protectedGroup)
-	
-	// Register Agent Orchestrator routes on protected group
-	orchestratorRoutes := routes.NewAgentOrchestratorRoutes(db.DB)
-	orchestratorRoutes.RegisterRoutes(protectedGroup)
 
 	// Register Calendar routes on protected group
 	calendarRoutes, err := routes.NewCalendarRoutes(db.DB)

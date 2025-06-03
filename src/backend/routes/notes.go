@@ -32,8 +32,9 @@ func CreateNote(c *gin.Context, db *database.Database, noteService services.Note
 	// Get user ID from context and add to note data
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	noteData["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -58,8 +59,9 @@ func GetNoteById(c *gin.Context, db *database.Database, noteService services.Not
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -90,8 +92,9 @@ func UpdateNote(c *gin.Context, db *database.Database, noteService services.Note
 	// Get user ID from context and add to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -116,8 +119,9 @@ func DeleteNote(c *gin.Context, db *database.Database, noteService services.Note
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -138,10 +142,13 @@ func GetNotes(c *gin.Context, db *database.Database, noteService services.NoteSe
 
 	// Get user ID from context (set by AuthMiddleware)
 	userIDInterface, exists := c.Get("userID")
-	if exists {
-		// Convert user ID to string and add to params
-		params["user_id"] = userIDInterface.(uuid.UUID).String()
+	if !exists {
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
+	// Convert user ID to string and add to params
+	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
 	// Add other query parameters
 	if notebookID := c.Query("notebook_id"); notebookID != "" {

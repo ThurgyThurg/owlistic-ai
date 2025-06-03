@@ -80,10 +80,12 @@ func (ar *AIRoutes) processNoteWithAI(c *gin.Context) {
 	}
 
 	// Get user ID from context (assuming it's set by auth middleware)
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	// Verify note belongs to user
@@ -119,10 +121,12 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var aiNote models.AIEnhancedNote
@@ -175,10 +179,12 @@ func (ar *AIRoutes) semanticSearch(c *gin.Context) {
 		request.Limit = 10
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	// For now, fall back to text search since semantic search needs vector DB
@@ -215,10 +221,12 @@ func (ar *AIRoutes) createAIProject(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	// Check if this project was created from a task breakdown
@@ -266,10 +274,12 @@ func (ar *AIRoutes) createAIProject(c *gin.Context) {
 
 // getAIProjects returns all AI projects for the user
 func (ar *AIRoutes) getAIProjects(c *gin.Context) {
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var projects []models.AIProject
@@ -290,10 +300,12 @@ func (ar *AIRoutes) getAIProject(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var project models.AIProject
@@ -314,10 +326,12 @@ func (ar *AIRoutes) updateAIProject(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var request struct {
@@ -373,10 +387,12 @@ func (ar *AIRoutes) deleteAIProject(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	result := ar.db.Where("id = ? AND user_id = ?", projectID, userID).Delete(&models.AIProject{})
@@ -405,10 +421,12 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	agent := models.AIAgent{
@@ -470,10 +488,12 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 
 // getAgentRuns returns agent execution history
 func (ar *AIRoutes) getAgentRuns(c *gin.Context) {
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	limit := 20
@@ -504,10 +524,12 @@ func (ar *AIRoutes) getAgentRun(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var agent models.AIAgent
@@ -557,10 +579,12 @@ func (ar *AIRoutes) chatWithAI(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	// Use the chat service to handle the request
@@ -581,10 +605,12 @@ func (ar *AIRoutes) getChatHistory(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var messages []models.ChatMemory
@@ -617,10 +643,12 @@ func (ar *AIRoutes) breakDownTask(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	// Call AI service to break down the task
@@ -656,10 +684,12 @@ func (ar *AIRoutes) breakDownTask(c *gin.Context) {
 
 // getChatSessions returns all chat sessions for the user
 func (ar *AIRoutes) getChatSessions(c *gin.Context) {
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	sessions, err := ar.chatService.GetChatSessions(c.Request.Context(), userID.(uuid.UUID))
@@ -677,10 +707,12 @@ func (ar *AIRoutes) getChatSessions(c *gin.Context) {
 func (ar *AIRoutes) deleteChatSession(c *gin.Context) {
 	sessionID := c.Param("id")
 	
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	err := ar.chatService.DeleteChatSession(c.Request.Context(), userID.(uuid.UUID), sessionID)
@@ -705,10 +737,12 @@ func (ar *AIRoutes) runReasoningAgent(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	// Execute reasoning loop in background
@@ -741,10 +775,12 @@ func (ar *AIRoutes) getReasoningAgentResult(c *gin.Context) {
 		return
 	}
 
+	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userID = singleUserUUID
 	}
 
 	var agent models.AIAgent

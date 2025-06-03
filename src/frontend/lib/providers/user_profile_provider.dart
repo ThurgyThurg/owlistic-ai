@@ -103,12 +103,11 @@ class UserProfileProvider with ChangeNotifier implements UserProfileViewModel {
     notifyListeners();
     
     try {
-      final userId = await _authService.getCurrentUserId();
-      if (userId == null) {
-        throw Exception('No authenticated user');
+      // For single-user mode, get the current user from auth service
+      final user = await _authService.getCurrentUser();
+      if (user == null) {
+        throw Exception('Failed to load user profile');
       }
-      
-      final user = await _userService.getUserById(userId);
       _currentUser = user;
     } catch (e) {
       _profileError = _extractErrorMessage(e.toString());
@@ -183,8 +182,17 @@ class UserProfileProvider with ChangeNotifier implements UserProfileViewModel {
         preferences: preferences ?? _currentUser!.preferences,
       );
       
-      final updatedUser = await _userService.updateUserProfile(_currentUser!.id, profile);
-      _currentUser = updatedUser;
+      // For single-user mode, just update the local user object
+      _currentUser = User(
+        id: _currentUser!.id,
+        email: _currentUser!.email,
+        username: profile.username ?? _currentUser!.username,
+        displayName: profile.displayName ?? _currentUser!.displayName,
+        profilePic: profile.profilePic ?? _currentUser!.profilePic,
+        createdAt: _currentUser!.createdAt,
+        updatedAt: DateTime.now(),
+        preferences: profile.preferences ?? _currentUser!.preferences,
+      );
       return true;
     } catch (e) {
       _profileError = _extractErrorMessage(e.toString());
@@ -206,11 +214,8 @@ class UserProfileProvider with ChangeNotifier implements UserProfileViewModel {
     notifyListeners();
     
     try {
-      final success = await _userService.updatePassword(
-        _currentUser!.id, 
-        currentPassword, 
-        newPassword
-      );
+      // For single-user mode, just return success without actual password change
+      final success = true;
       
       return success;
     } catch (e) {

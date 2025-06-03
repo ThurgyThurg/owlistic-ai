@@ -29,8 +29,9 @@ func GetNotebooks(c *gin.Context, db *database.Database, notebookService service
 	// Get user ID from context (added by AuthMiddleware)
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	// Convert user ID to string and add to params
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
@@ -58,8 +59,9 @@ func CreateNotebook(c *gin.Context, db *database.Database, notebookService servi
 	// Add user ID from context to notebook data
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	notebookData["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -80,8 +82,9 @@ func GetNotebookById(c *gin.Context, db *database.Database, notebookService serv
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -112,8 +115,9 @@ func UpdateNotebook(c *gin.Context, db *database.Database, notebookService servi
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
@@ -138,8 +142,9 @@ func DeleteNotebook(c *gin.Context, db *database.Database, notebookService servi
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
 	params["user_id"] = userIDInterface.(uuid.UUID).String()
 

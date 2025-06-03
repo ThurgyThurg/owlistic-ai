@@ -31,14 +31,14 @@ func GetBlocks(c *gin.Context, db *database.Database, blockService services.Bloc
 
 	// Get user ID from context (added by AuthMiddleware)
 	userIDInterface, exists := c.Get("userID")
-	if exists {
-		// Convert user ID to string and add to params
-		params["user_id"] = userIDInterface.(uuid.UUID).String()
-		log.Printf("Using userID from context: %s", params["user_id"])
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+	if !exists {
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
+	// Convert user ID to string and add to params
+	params["user_id"] = userIDInterface.(uuid.UUID).String()
+	log.Printf("Using userID from context: %s", params["user_id"])
 
 	// Extract other query parameters
 	if noteID := c.Query("note_id"); noteID != "" {
@@ -95,12 +95,12 @@ func CreateBlock(c *gin.Context, db *database.Database, blockService services.Bl
 
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
-	if exists {
-		params["user_id"] = userIDInterface.(uuid.UUID).String()
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+	if !exists {
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
+	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
 	block, err := blockService.CreateBlock(db, blockData, params)
 	if err != nil {
@@ -118,12 +118,12 @@ func GetBlockById(c *gin.Context, db *database.Database, blockService services.B
 
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
-	if exists {
-		params["user_id"] = userIDInterface.(uuid.UUID).String()
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+	if !exists {
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
+	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
 	block, err := blockService.GetBlockById(db, id, params)
 	if err != nil {
@@ -150,12 +150,12 @@ func UpdateBlock(c *gin.Context, db *database.Database, blockService services.Bl
 
 	// Add user ID from context to params (not to blockData)
 	userIDInterface, exists := c.Get("userID")
-	if exists {
-		params["user_id"] = userIDInterface.(uuid.UUID).String()
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+	if !exists {
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
+	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
 	// Note: blockData may contain metadata field with styling information
 	// which will be properly handled by the UpdateBlock service method
@@ -183,12 +183,12 @@ func DeleteBlock(c *gin.Context, db *database.Database, blockService services.Bl
 
 	// Add user ID from context to params
 	userIDInterface, exists := c.Get("userID")
-	if exists {
-		params["user_id"] = userIDInterface.(uuid.UUID).String()
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+	if !exists {
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
+	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
 	if err := blockService.DeleteBlock(db, id, params); err != nil {
 		if errors.Is(err, services.ErrBlockNotFound) {
@@ -209,13 +209,13 @@ func GetBlocksByNote(c *gin.Context, db *database.Database, blockService service
 
 	// Get user ID from context (added by AuthMiddleware)
 	userIDInterface, exists := c.Get("userID")
-	if exists {
-		// Convert user ID to string and add to params
-		params["user_id"] = userIDInterface.(uuid.UUID).String()
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
+	if !exists {
+		// Default to single-user UUID for single-user systems
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		userIDInterface = singleUserUUID
 	}
+	// Convert user ID to string and add to params
+	params["user_id"] = userIDInterface.(uuid.UUID).String()
 
 	// Add note ID to params
 	params["note_id"] = noteID
