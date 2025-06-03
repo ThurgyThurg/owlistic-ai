@@ -35,7 +35,7 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
       _logger.info('Initializing auth state');
       
       // Set server URL from environment configuration
-      _webSocketService.setServerUrl(AppConfig.defaultServerUrl);
+      _webSocketService.setServerUrl(AppConfig.serverUrl);
       
       // Initialize auth service
       await _authService.initialize();
@@ -159,7 +159,7 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
   // Get the current server URL from configuration
   @override
   String? getServerUrl() {
-    return AppConfig.defaultServerUrl;
+    return AppConfig.serverUrl;
   }
   
   @override
