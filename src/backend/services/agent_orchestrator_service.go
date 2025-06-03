@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -141,8 +140,8 @@ func NewAgentOrchestrator(db *gorm.DB) *AgentOrchestrator {
 
 	// Initialize services
 	orchestrator.aiService = NewAIService(db)
-	orchestrator.noteService = NewNoteService()
-	orchestrator.taskService = NewTaskService()
+	orchestrator.noteService = NewNoteService().(*NoteService)
+	orchestrator.taskService = NewTaskService().(*TaskService)
 	orchestrator.reasoningAgent = NewReasoningAgentService(db, orchestrator.aiService, orchestrator.noteService)
 	orchestrator.chatService = NewChatService(db, orchestrator.aiService, orchestrator.noteService)
 
@@ -168,6 +167,7 @@ func (o *AgentOrchestrator) registerBuiltInAgents() {
 	o.registeredAgents[AgentTypeNoteAnalyzer] = &NoteAnalyzerAgent{
 		aiService:   o.aiService,
 		noteService: o.noteService,
+		db:          o.db,
 	}
 
 	// Register task planner agent

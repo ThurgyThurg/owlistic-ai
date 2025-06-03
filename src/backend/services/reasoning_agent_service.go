@@ -14,10 +14,28 @@ import (
 	"gorm.io/gorm"
 )
 
+// ReasoningStrategy defines different reasoning approaches
+type ReasoningStrategy string
+
+const (
+	MethodicalStrategy   ReasoningStrategy = "methodical"
+	ExploratoryStrategy  ReasoningStrategy = "exploratory"
+	FocusedStrategy      ReasoningStrategy = "focused"
+	MultiStrategy        ReasoningStrategy = "multi_strategy"
+)
+
+// ReasoningRequest represents a request to the reasoning agent
+type ReasoningRequest struct {
+	Problem       string                 `json:"problem"`
+	Strategy      ReasoningStrategy      `json:"strategy"`
+	MaxIterations int                    `json:"max_iterations"`
+	Context       map[string]interface{} `json:"context"`
+}
+
 // ReasoningAgentService implements a reasoning loop agent that can solve complex problems
 type ReasoningAgentService struct {
-	db       *gorm.DB
-	ai       *AIService
+	db          *gorm.DB
+	ai          *AIService
 	noteService *NoteService
 }
 
@@ -349,7 +367,7 @@ func (r *ReasoningAgentService) executeSearchAction(ctx context.Context, reasoni
 	} else if r.ai.perplexicaService != nil && r.ai.perplexicaService.IsEnabled() {
 		// Use Perplexica for web search
 		userID := reasoningCtx.Resources["user_id"].(uuid.UUID)
-		searchResult, err := r.ai.SearchWithPerplexica(ctx, userID, query, "webSearch", &reasoningCtx.Resources["agent_id"].(uuid.UUID))
+		searchResult, err := r.ai.SearchWithPerplexica(ctx, userID, query, "webSearch", nil)
 		if err != nil {
 			return "", err
 		}

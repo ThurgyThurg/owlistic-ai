@@ -31,8 +31,8 @@ func NewAIRoutes(db *gorm.DB) *AIRoutes {
 	return &AIRoutes{
 		db:                   db,
 		aiService:            aiService,
-		chatService:          services.NewChatService(db, aiService, noteService),
-		reasoningAgentService: services.NewReasoningAgentService(db, aiService, noteService),
+		chatService:          services.NewChatService(db, aiService, noteService.(*services.NoteService)),
+		reasoningAgentService: services.NewReasoningAgentService(db, aiService, noteService.(*services.NoteService)),
 	}
 }
 
@@ -457,7 +457,7 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 			agent.CompletedAt = &[]time.Time{time.Now()}[0]
 		} else {
 			agent.Status = "completed"
-			agent.Result = result
+			agent.OutputData = models.AIMetadata{"result": result}
 			agent.CompletedAt = &[]time.Time{time.Now()}[0]
 		}
 		

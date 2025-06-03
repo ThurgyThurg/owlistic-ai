@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"owlistic-notes/owlistic/models"
+
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // ReasoningAgentExecutor wraps the ReasoningAgentService for orchestration
@@ -48,7 +51,7 @@ func (r *ReasoningAgentExecutor) Execute(ctx context.Context, input map[string]i
 	}
 
 	// Execute reasoning
-	result, err := r.service.RunReasoningLoop(ctx, userID, req)
+	result, err := r.service.ExecuteReasoningLoop(ctx, userID, req.Problem, fmt.Sprintf("%v", req.Context), string(req.Strategy))
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +91,9 @@ func (c *ChatAgentExecutor) Execute(ctx context.Context, input map[string]interf
 
 	// Add context if provided
 	if context, ok := input["context"].([]string); ok {
-		req.Context = context
+		req.Context = strings.Join(context, "\n")
+	} else if contextStr, ok := input["context"].(string); ok {
+		req.Context = contextStr
 	}
 
 	// Execute chat
@@ -108,6 +113,7 @@ func (c *ChatAgentExecutor) GetType() AgentType {
 type NoteAnalyzerAgent struct {
 	aiService   *AIService
 	noteService *NoteService
+	db          *gorm.DB
 }
 
 func (n *NoteAnalyzerAgent) Execute(ctx context.Context, input map[string]interface{}) (interface{}, error) {
@@ -134,8 +140,9 @@ func (n *NoteAnalyzerAgent) analyzeNote(ctx context.Context, input map[string]in
 		return nil, fmt.Errorf("missing or invalid 'note_id' parameter")
 	}
 
-	// Get note content
-	note, err := n.noteService.GetNoteByID(noteID)
+	// Get note content - need to access database directly for now  
+	var note models.Note
+	err := n.db.Where("id = ?", noteID).Preload("Blocks").First(&note).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get note: %w", err)
 	}
@@ -148,7 +155,7 @@ func (n *NoteAnalyzerAgent) analyzeNote(ctx context.Context, input map[string]in
 4. Action items if any
 
 Note Title: %s
-Note Content: %s`, note.Title, note.Content)
+Note Content: %s`, note.Title, n.extractNoteContent(&note))
 
 	response, err := n.aiService.GenerateResponse(ctx, prompt, nil)
 	if err != nil {
@@ -194,8 +201,9 @@ func (n *NoteAnalyzerAgent) extractEntities(ctx context.Context, input map[strin
 		return nil, fmt.Errorf("missing or invalid 'note_id' parameter")
 	}
 
-	// Get note content
-	note, err := n.noteService.GetNoteByID(noteID)
+	// Get note content - need to access database directly for now  
+	var note models.Note
+	err := n.db.Where("id = ?", noteID).Preload("Blocks").First(&note).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get note: %w", err)
 	}
@@ -211,7 +219,7 @@ func (n *NoteAnalyzerAgent) extractEntities(ctx context.Context, input map[strin
 
 Format as JSON.
 
-Note: %s`, note.Content)
+Note: %s`, n.extractNoteContent(&note))
 
 	response, err := n.aiService.GenerateResponse(ctx, prompt, nil)
 	if err != nil {
@@ -433,4 +441,19 @@ Provide only the code without additional explanation.`, language, spec, language
 
 func (c *CodeGeneratorAgent) GetType() AgentType {
 	return AgentTypeCodeGenerator
+}
+
+// Helper method to extract content from note blocks
+func (n *NoteAnalyzerAgent) extractNoteContent(note *models.Note) string {
+	var contentBuilder strings.Builder
+	for _, block := range note.Blocks {
+		// Extract text content from the block
+		if textContent, exists := block.Content["text"]; exists {
+			if textStr, ok := textContent.(string); ok && strings.TrimSpace(textStr) != "" {
+				contentBuilder.WriteString(textStr)
+				contentBuilder.WriteString("\n")
+			}
+		}
+	}
+	return strings.TrimSpace(contentBuilder.String())
 }

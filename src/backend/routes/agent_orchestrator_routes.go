@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"owlistic/services"
+	"owlistic-notes/owlistic/services"
 )
 
 type AgentOrchestratorRoutes struct {
