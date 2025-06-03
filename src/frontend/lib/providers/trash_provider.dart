@@ -142,18 +142,11 @@ class TrashProvider with ChangeNotifier implements TrashViewModel {
   Future<void> fetchTrashedItems() async {
     if (!_isActive) return;
     
-    // Get current user ID for filtering
-    final currentUser = await _authService.getUserProfile();
-    if (currentUser == null) {
-      _logger.warning('Cannot fetch trash: No authenticated user');
-      return;
-    }
-    
     _isLoading = true;
     notifyListeners();
     
     try {
-      // Pass user ID for proper filtering
+      // Make the REST API call - authentication handled by BaseService
       final trashedItems = await _trashService.fetchTrashedItems();
       
       // Convert List<dynamic> to List<Note> and List<Notebook>
@@ -175,13 +168,7 @@ class TrashProvider with ChangeNotifier implements TrashViewModel {
   @override
   Future<void> restoreItem(String type, String id) async {
     try {
-      // Get current user ID for the API request
-      final currentUser = await _authService.getUserProfile();
-      if (currentUser == null) {
-        _logger.warning('Cannot restore item: No authenticated user');
-        throw Exception('User is not authenticated');
-      }
-      
+      // Make the REST API call - authentication handled by BaseService
       await _trashService.restoreItem(type, id);
       
       _logger.info('Restored $type with ID: $id');
@@ -204,13 +191,7 @@ class TrashProvider with ChangeNotifier implements TrashViewModel {
   @override
   Future<void> permanentlyDeleteItem(String type, String id) async {
     try {
-      // Get current user ID for the API request
-      final currentUser = await _authService.getUserProfile();
-      if (currentUser == null) {
-        _logger.warning('Cannot delete item: No authenticated user');
-        throw Exception('User is not authenticated');
-      }
-      
+      // Make the REST API call - authentication handled by BaseService
       await _trashService.permanentlyDeleteItem(type, id);
       
       _logger.info('Permanently deleted $type with ID: $id');
@@ -233,13 +214,7 @@ class TrashProvider with ChangeNotifier implements TrashViewModel {
   @override
   Future<void> emptyTrash() async {
     try {
-      // Get current user ID for the API request
-      final currentUser = await _authService.getUserProfile();
-      if (currentUser == null) {
-        _logger.warning('Cannot empty trash: No authenticated user');
-        throw Exception('User is not authenticated');
-      }
-      
+      // Make the REST API call - authentication handled by BaseService
       await _trashService.emptyTrash();
       
       _logger.info('Emptied trash');

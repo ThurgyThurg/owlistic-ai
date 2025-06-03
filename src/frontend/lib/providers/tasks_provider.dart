@@ -240,17 +240,11 @@ class TasksProvider with ChangeNotifier implements TasksViewModel {
   Future<void> fetchTasks({String? completed, String? noteId}) async {
     if (!_isActive) return; // Don't fetch if not active
     
-    // Get current user ID for filtering
-    final currentUser = await _authService.getUserProfile();
-    if (currentUser == null) {
-      _logger.warning('Cannot fetch tasks: No authenticated user');
-      return;
-    }
-    
     _isLoading = true;
     notifyListeners();
 
     try {
+      // Make the REST API call - authentication handled by BaseService
       final tasksList = await _taskService.fetchTasks(
         completed: completed,
         noteId: noteId,

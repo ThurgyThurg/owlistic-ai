@@ -153,14 +153,7 @@ class NotebooksProvider with ChangeNotifier implements NotebooksViewModel {
   }) async {
     // Only process if provider is active
     if (!_isActive) {
-      _logger.debug('Provider not active, ignoring create event');
-      return;
-    }
-      
-    // Get current user ID for filtering
-    final currentUser = await _authService.getUserProfile();
-    if (currentUser == null) {
-      _logger.warning('Cannot fetch notebooks: No authenticated user');
+      _logger.debug('Provider not active, ignoring fetch request');
       return;
     }
     
@@ -168,9 +161,9 @@ class NotebooksProvider with ChangeNotifier implements NotebooksViewModel {
     notifyListeners();
     
     try {
-      _logger.info('Fetching notebooks for user: ${currentUser.id}');
+      _logger.info('Fetching notebooks...');
       
-      // Make the REST API call to fetch notebooks
+      // Make the REST API call to fetch notebooks - authentication handled by BaseService
       final fetchedNotebooks = await _notebookService.fetchNotebooks(
         name: name,
         page: page,
@@ -238,13 +231,7 @@ class NotebooksProvider with ChangeNotifier implements NotebooksViewModel {
   @override
   Future<Notebook?> createNotebook(String name, String description) async {
     try {
-      // Get user ID from the auth service directly
-      final currentUser = await _authService.getUserProfile();
-      if (currentUser == null) {
-        throw Exception('Cannot create notebook: No authenticated user');
-      }
-      
-      // Create the notebook
+      // Create the notebook - authentication handled by BaseService
       final notebook = await _notebookService.createNotebook(
         name, 
         description, 

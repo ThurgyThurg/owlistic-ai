@@ -273,18 +273,11 @@ class NotesProvider with ChangeNotifier implements NotesViewModel {
     int pageSize = 20,
     List<String>? excludeIds
   }) async {
-    // Check if user is logged in
-    final currentUser = await _authService.getUserProfile();
-    if (currentUser == null) {
-      _logger.warning('Cannot fetch notes: No authenticated user');
-      return [];
-    }
-
     _isLoading = true;
     notifyListeners();
     
     try {
-      // Fetch notes from API with notebook filter
+      // Fetch notes from API with notebook filter - authentication handled by BaseService
       final fetchedNotes = await _noteService.fetchNotes(
         notebookId: notebookId,
         page: page,

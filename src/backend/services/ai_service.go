@@ -902,81 +902,185 @@ func (ai *AIService) CreateProjectNotebook(ctx context.Context, userID uuid.UUID
 	if breakdown != nil {
 		if stepsData, exists := breakdown["steps"]; exists {
 			if steps, ok := stepsData.([]interface{}); ok {
-				// Create a summary note with all steps
-				noteData := map[string]interface{}{
-					"title":       projectName + " - Task Breakdown",
+				// Create an introduction/overview note first
+				introNoteData := map[string]interface{}{
+					"title":       projectName + " - Project Overview",
 					"user_id":     userID.String(),
 					"notebook_id": notebook.ID.String(),
 				}
 				
-				note, err := NoteServiceInstance.CreateNote(&database.Database{DB: ai.db}, noteData)
+				introNote, err := NoteServiceInstance.CreateNote(&database.Database{DB: ai.db}, introNoteData)
 				if err != nil {
-					log.Printf("Failed to create project note: %v", err)
+					log.Printf("Failed to create intro note: %v", err)
 				} else {
-					noteIDs = append(noteIDs, note.ID)
+					noteIDs = append(noteIDs, introNote.ID)
 					
-					// Create content blocks for each step
-					log.Printf("Creating %d step blocks for note %s", len(steps), note.ID)
+					// Create overview content blocks
+					titleBlock := models.Block{
+						ID:      uuid.New(),
+						UserID:  userID,
+						NoteID:  introNote.ID,
+						Type:    "header",
+						Order:   1000.0,
+						Content: map[string]interface{}{
+							"text":  "Project Overview",
+							"level": 1,
+						},
+						Metadata: models.BlockMetadata{},
+					}
+					ai.db.Create(&titleBlock)
+					
+					descBlock := models.Block{
+						ID:      uuid.New(),
+						UserID:  userID,
+						NoteID:  introNote.ID,
+						Type:    "text",
+						Order:   2000.0,
+						Content: map[string]interface{}{
+							"text": projectDescription,
+						},
+						Metadata: models.BlockMetadata{},
+					}
+					ai.db.Create(&descBlock)
+					
+					// Create steps overview
+					stepsHeaderBlock := models.Block{
+						ID:      uuid.New(),
+						UserID:  userID,
+						NoteID:  introNote.ID,
+						Type:    "header",
+						Order:   3000.0,
+						Content: map[string]interface{}{
+							"text":  "Steps Overview",
+							"level": 2,
+						},
+						Metadata: models.BlockMetadata{},
+					}
+					ai.db.Create(&stepsHeaderBlock)
+					
+					// Create a bullet list of all steps
+					var stepsList strings.Builder
 					for i, step := range steps {
 						if stepMap, ok := step.(map[string]interface{}); ok {
 							stepTitle := "Untitled Step"
-							stepDesc := "No description"
-							
 							if title, exists := stepMap["title"]; exists {
 								if titleStr, ok := title.(string); ok {
 									stepTitle = titleStr
 								}
 							}
-							
-							if desc, exists := stepMap["description"]; exists {
-								if descStr, ok := desc.(string); ok {
-									stepDesc = descStr
-								}
-							}
-							
-							log.Printf("Creating step %d: %s", i+1, stepTitle)
-							
-							// Create heading block for step - use higher order numbers to avoid conflicts with default block
-							headingBlock := models.Block{
-								ID:      uuid.New(),
-								UserID:  userID,
-								NoteID:  note.ID,
-								Type:    "header",
-								Order:   float64(100 + i*10 + 1), // Start from 100 to avoid conflicts
-								Content: map[string]interface{}{
-									"text":  fmt.Sprintf("Step %d: %s", i+1, stepTitle),
-									"level": 2,
-								},
-								Metadata: models.BlockMetadata{},
-							}
-							
-							if err := ai.db.Create(&headingBlock).Error; err != nil {
-								log.Printf("Failed to create heading block for step %d: %v", i+1, err)
-								continue
-							}
-							
-							// Create text block for step description
-							textBlock := models.Block{
-								ID:      uuid.New(),
-								UserID:  userID,
-								NoteID:  note.ID,
-								Type:    "text",
-								Order:   float64(100 + i*10 + 2),
-								Content: map[string]interface{}{
-									"text": stepDesc,
-								},
-								Metadata: models.BlockMetadata{},
-							}
-							
-							if err := ai.db.Create(&textBlock).Error; err != nil {
-								log.Printf("Failed to create text block for step %d: %v", i+1, err)
-							} else {
-								log.Printf("Successfully created text block for step %d", i+1)
-							}
+							stepsList.WriteString(fmt.Sprintf("• Step %d: %s\n", i+1, stepTitle))
 						}
 					}
-					log.Printf("Finished creating blocks for note %s", note.ID)
+					
+					stepsListBlock := models.Block{
+						ID:      uuid.New(),
+						UserID:  userID,
+						NoteID:  introNote.ID,
+						Type:    "text",
+						Order:   4000.0,
+						Content: map[string]interface{}{
+							"text": stepsList.String(),
+						},
+						Metadata: models.BlockMetadata{},
+					}
+					ai.db.Create(&stepsListBlock)
 				}
+				
+				// Create a separate note for each step
+				log.Printf("Creating %d individual step notes", len(steps))
+				for i, step := range steps {
+					if stepMap, ok := step.(map[string]interface{}); ok {
+						stepTitle := "Untitled Step"
+						stepDesc := "No description"
+						
+						if title, exists := stepMap["title"]; exists {
+							if titleStr, ok := title.(string); ok {
+								stepTitle = titleStr
+							}
+						}
+						
+						if desc, exists := stepMap["description"]; exists {
+							if descStr, ok := desc.(string); ok {
+								stepDesc = descStr
+							}
+						}
+						
+						// Create individual note for this step
+						stepNoteData := map[string]interface{}{
+							"title":       fmt.Sprintf("Step %d: %s", i+1, stepTitle),
+							"user_id":     userID.String(),
+							"notebook_id": notebook.ID.String(),
+						}
+						
+						stepNote, err := NoteServiceInstance.CreateNote(&database.Database{DB: ai.db}, stepNoteData)
+						if err != nil {
+							log.Printf("Failed to create step note %d: %v", i+1, err)
+							continue
+						}
+						
+						noteIDs = append(noteIDs, stepNote.ID)
+						log.Printf("Created step note %d: %s", i+1, stepTitle)
+						
+						// Add content blocks to the step note
+						stepHeaderBlock := models.Block{
+							ID:      uuid.New(),
+							UserID:  userID,
+							NoteID:  stepNote.ID,
+							Type:    "header",
+							Order:   1000.0,
+							Content: map[string]interface{}{
+								"text":  fmt.Sprintf("Step %d: %s", i+1, stepTitle),
+								"level": 1,
+							},
+							Metadata: models.BlockMetadata{},
+						}
+						ai.db.Create(&stepHeaderBlock)
+						
+						// Add description block
+						stepDescBlock := models.Block{
+							ID:      uuid.New(),
+							UserID:  userID,
+							NoteID:  stepNote.ID,
+							Type:    "text",
+							Order:   2000.0,
+							Content: map[string]interface{}{
+								"text": stepDesc,
+							},
+							Metadata: models.BlockMetadata{},
+						}
+						ai.db.Create(&stepDescBlock)
+						
+						// Add a status/progress section
+						statusHeaderBlock := models.Block{
+							ID:      uuid.New(),
+							UserID:  userID,
+							NoteID:  stepNote.ID,
+							Type:    "header",
+							Order:   3000.0,
+							Content: map[string]interface{}{
+								"text":  "Progress & Notes",
+								"level": 2,
+							},
+							Metadata: models.BlockMetadata{},
+						}
+						ai.db.Create(&statusHeaderBlock)
+						
+						// Add a placeholder for progress notes
+						progressBlock := models.Block{
+							ID:      uuid.New(),
+							UserID:  userID,
+							NoteID:  stepNote.ID,
+							Type:    "text",
+							Order:   4000.0,
+							Content: map[string]interface{}{
+								"text": "Status: Not started\n\nAdd your progress notes here...",
+							},
+							Metadata: models.BlockMetadata{},
+						}
+						ai.db.Create(&progressBlock)
+					}
+				}
+				log.Printf("Finished creating %d step notes", len(steps))
 			}
 		}
 	}
