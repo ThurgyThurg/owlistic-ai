@@ -142,12 +142,12 @@ class _AIDashboardScreenState extends State<AIDashboardScreen>
         'step_count': _currentBreakdown!.steps.length,
       };
 
-      final response = await AIService().createAIProject({
-        'name': _currentBreakdown!.goal,
-        'description': 'Project created from AI task breakdown',
-        'ai_tags': ['task-breakdown', 'ai-generated'],
-        'ai_metadata': metadata,
-      });
+      final response = await AIService().createAIProject(
+        name: _currentBreakdown!.goal,
+        description: 'Project created from AI task breakdown',
+        aiTags: ['task-breakdown', 'ai-generated'],
+        aiMetadata: metadata,
+      );
 
       if (response['status'] == 'success') {
         ScaffoldMessenger.of(context).showSnackBar(

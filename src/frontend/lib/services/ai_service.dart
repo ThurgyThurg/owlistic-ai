@@ -90,7 +90,10 @@ class AIService extends BaseService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       
       _logger.info('AI project created: ${data['id']}');
-      return data;
+      return {
+        'status': 'success',
+        'data': data,
+      };
     } catch (e) {
       _logger.error('Failed to create AI project: $e');
       rethrow;
@@ -302,22 +305,4 @@ class AIService extends BaseService {
     }
   }
 
-  /// Create AI project from JSON data
-  Future<Map<String, dynamic>> createAIProject(Map<String, dynamic> projectData) async {
-    try {
-      _logger.info('Creating AI project: ${projectData['name']}');
-      
-      final response = await authenticatedPost('/api/v1/ai/projects', projectData);
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      
-      _logger.info('AI project created: ${data['id']}');
-      return {
-        'status': 'success',
-        'data': data,
-      };
-    } catch (e) {
-      _logger.error('Failed to create AI project: $e');
-      rethrow;
-    }
-  }
 }
