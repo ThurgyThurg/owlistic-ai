@@ -198,12 +198,10 @@ class AuthService extends BaseService {
       _logger.debug('Current URL in SharedPreferences: $currentUrl');
       _logger.debug('AppConfig.serverUrl: ${AppConfig.serverUrl}');
       
-      // Use relative URL if AppConfig.serverUrl is localhost, otherwise use the configured URL
-      String serverUrl = AppConfig.serverUrl;
-      if (serverUrl.contains('localhost') || serverUrl.contains('127.0.0.1')) {
-        // Use relative URLs to work with nginx proxy
-        serverUrl = '';
-      }
+      // Always use relative URLs to work with nginx proxy in production
+      // This avoids CORS issues and works with any domain through cloudflared tunnel
+      String serverUrl = '';
+      _logger.debug('Using relative URLs for nginx proxy configuration');
       
       await prefs.setString('api_url', serverUrl);
       _logger.debug('Server URL updated in SharedPreferences: $serverUrl');
