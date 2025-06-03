@@ -20,11 +20,12 @@ import (
 )
 
 type AIService struct {
-	db             *gorm.DB
-	anthropicKey   string
-	anthropicModel string
-	chromaBaseURL  string
-	httpClient     *http.Client
+	db                *gorm.DB
+	anthropicKey      string
+	anthropicModel    string
+	chromaBaseURL     string
+	httpClient        *http.Client
+	perplexicaService *PerplexicaService
 }
 
 type AnthropicRequest struct {
@@ -63,11 +64,12 @@ func NewAIService(db *gorm.DB) *AIService {
 	anthropicKey := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
 
 	return &AIService{
-		db:             db,
-		anthropicKey:   anthropicKey,
-		anthropicModel: anthropicModel,
-		chromaBaseURL:  os.Getenv("CHROMA_BASE_URL"),
-		httpClient:     &http.Client{Timeout: 30 * time.Second},
+		db:                db,
+		anthropicKey:      anthropicKey,
+		anthropicModel:    anthropicModel,
+		chromaBaseURL:     os.Getenv("CHROMA_BASE_URL"),
+		httpClient:        &http.Client{Timeout: 30 * time.Second},
+		perplexicaService: NewPerplexicaService(),
 	}
 }
 
@@ -1557,6 +1559,205 @@ func (ai *AIService) createAITask(ctx context.Context, userID, noteID uuid.UUID,
 	}
 
 	return &task, nil
+}
+
+// SearchWithPerplexica performs a search using Perplexica and tracks usage
+func (ai *AIService) SearchWithPerplexica(ctx context.Context, userID uuid.UUID, query string, focusMode string, agentID *uuid.UUID) (*PerplexicaSearchResult, error) {
+	if !ai.perplexicaService.IsEnabled() {
+		return nil, fmt.Errorf("perplexica service is not enabled")
+	}
+
+	startTime := time.Now()
+	
+	// Perform the search
+	result, err := ai.perplexicaService.Search(ctx, query, focusMode, "balanced")
+	responseTime := int(time.Since(startTime).Milliseconds())
+
+	// Track tool usage
+	toolUsage := models.AIToolUsage{
+		UserID:       userID,
+		AgentID:      agentID,
+		ToolName:     "perplexica",
+		ToolAction:   focusMode,
+		InputData: map[string]interface{}{
+			"query":      query,
+			"focus_mode": focusMode,
+		},
+		Success:      err == nil && result != nil && result.Success,
+		ResponseTime: responseTime,
+	}
+
+	if err != nil {
+		toolUsage.ErrorMessage = err.Error()
+	} else if result != nil {
+		toolUsage.OutputData = map[string]interface{}{
+			"answer":        result.Answer,
+			"sources_count": len(result.Sources),
+			"success":       result.Success,
+		}
+	}
+
+	// Store tool usage (don't fail if this fails)
+	if dbErr := ai.db.WithContext(ctx).Create(&toolUsage).Error; dbErr != nil {
+		log.Printf("Failed to store tool usage: %v", dbErr)
+	}
+
+	// Store search result for tracking and potential caching
+	if result != nil {
+		searchRecord := models.PerplexicaSearch{
+			UserID:       userID,
+			Query:        query,
+			FocusMode:    focusMode,
+			Answer:       result.Answer,
+			Success:      result.Success,
+			ResponseTime: responseTime,
+		}
+
+		if result.Success {
+			// Convert sources to metadata format
+			sourcesData := make([]map[string]interface{}, len(result.Sources))
+			for i, source := range result.Sources {
+				sourcesData[i] = map[string]interface{}{
+					"page_content": source.PageContent,
+					"metadata":     source.Metadata,
+				}
+			}
+			searchRecord.Sources = sourcesData
+		} else {
+			searchRecord.ErrorMessage = result.Error
+		}
+
+		// Store search record (don't fail if this fails)
+		if dbErr := ai.db.WithContext(ctx).Create(&searchRecord).Error; dbErr != nil {
+			log.Printf("Failed to store search record: %v", dbErr)
+		}
+	}
+
+	return result, err
+}
+
+// GenerateContentWithResearch generates AI content and uses Perplexica for research when needed
+func (ai *AIService) GenerateContentWithResearch(ctx context.Context, userID uuid.UUID, prompt string, needsCurrentInfo bool) (string, error) {
+	var researchContext string
+	
+	// If current information is needed, search with Perplexica first
+	if needsCurrentInfo && ai.perplexicaService.IsEnabled() {
+		log.Printf("Performing research for prompt: %s", prompt[:min(100, len(prompt))])
+		
+		// Extract search query from prompt using AI
+		searchQuery, err := ai.extractSearchQueryFromPrompt(ctx, prompt)
+		if err != nil {
+			log.Printf("Failed to extract search query: %v", err)
+			searchQuery = prompt // Fallback to using the full prompt
+		}
+		
+		// Perform search
+		searchResult, err := ai.SearchWithPerplexica(ctx, userID, searchQuery, "webSearch", nil)
+		if err != nil {
+			log.Printf("Perplexica search failed: %v", err)
+		} else if searchResult != nil && searchResult.Success {
+			researchContext = ai.perplexicaService.FormatSearchResultForAI(searchResult)
+			log.Printf("Research completed, found %d sources", len(searchResult.Sources))
+		}
+	}
+	
+	// Enhance the prompt with research context
+	enhancedPrompt := prompt
+	if researchContext != "" {
+		enhancedPrompt = fmt.Sprintf(`%s
+
+Research Context (current information from web search):
+%s
+
+Please use this research context to provide accurate and up-to-date information in your response.`, prompt, researchContext)
+	}
+	
+	// Generate response using Anthropic
+	response, err := ai.callAnthropic(ctx, enhancedPrompt, 1000)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate AI response: %w", err)
+	}
+	
+	return response, nil
+}
+
+// extractSearchQueryFromPrompt uses AI to extract a good search query from a prompt
+func (ai *AIService) extractSearchQueryFromPrompt(ctx context.Context, prompt string) (string, error) {
+	extractionPrompt := fmt.Sprintf(`Extract the most relevant search query from this prompt that would help find current information:
+
+Prompt: %s
+
+Return only the search query (2-8 words), nothing else.
+Focus on the main topic that would benefit from current information.
+
+Search Query:`, prompt[:min(500, len(prompt))])
+
+	query, err := ai.callAnthropic(ctx, extractionPrompt, 50)
+	if err != nil {
+		return "", err
+	}
+	
+	// Clean up the query
+	query = strings.TrimSpace(strings.Trim(query, `"'`))
+	if len(query) > 100 {
+		query = query[:100]
+	}
+	
+	return query, nil
+}
+
+// GetPerplexicaSearchHistory returns recent Perplexica searches for a user
+func (ai *AIService) GetPerplexicaSearchHistory(ctx context.Context, userID uuid.UUID, limit int) ([]models.PerplexicaSearch, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	
+	var searches []models.PerplexicaSearch
+	err := ai.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&searches).Error
+	
+	return searches, err
+}
+
+// GetToolUsageStats returns statistics about AI tool usage for a user
+func (ai *AIService) GetToolUsageStats(ctx context.Context, userID uuid.UUID, toolName string, days int) (map[string]interface{}, error) {
+	if days <= 0 {
+		days = 30
+	}
+	
+	since := time.Now().AddDate(0, 0, -days)
+	
+	query := ai.db.WithContext(ctx).Model(&models.AIToolUsage{}).Where("user_id = ? AND created_at > ?", userID, since)
+	
+	if toolName != "" {
+		query = query.Where("tool_name = ?", toolName)
+	}
+	
+	var totalUsage int64
+	var successfulUsage int64
+	
+	query.Count(&totalUsage)
+	query.Where("success = true").Count(&successfulUsage)
+	
+	var avgResponseTime float64
+	query.Select("AVG(response_time)").Scan(&avgResponseTime)
+	
+	successRate := float64(0)
+	if totalUsage > 0 {
+		successRate = float64(successfulUsage) / float64(totalUsage) * 100
+	}
+	
+	return map[string]interface{}{
+		"total_usage":     totalUsage,
+		"successful_usage": successfulUsage,
+		"success_rate":    successRate,
+		"avg_response_time": avgResponseTime,
+		"period_days":     days,
+		"tool_name":       toolName,
+	}, nil
 }
 
 func min(a, b int) int {

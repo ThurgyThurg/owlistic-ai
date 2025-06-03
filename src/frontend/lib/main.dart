@@ -16,7 +16,6 @@ import 'services/websocket_service.dart';
 import 'services/app_state_service.dart';
 
 import 'utils/logger.dart';
-import 'viewmodel/login_viewmodel.dart';
 import 'viewmodel/theme_viewmodel.dart';
 
 void main() async {
@@ -96,10 +95,7 @@ class _OwlisticAppWithProvidersState extends State<OwlisticAppWithProviders> {
   @override
   void initState() {
     super.initState();
-    _appRouter = AppRouter(
-      context, 
-      authStateChanges: context.read<LoginViewModel>().authStateChanges
-    );
+    _appRouter = AppRouter(context);
     _router = _appRouter.router;
   }
 

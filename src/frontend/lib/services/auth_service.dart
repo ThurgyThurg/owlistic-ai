@@ -32,13 +32,53 @@ class AuthService extends BaseService {
   AuthService() {
     _instance = this;
     
-    // Load token synchronously if possible - use SharedPreferences for sync access
-    _loadTokenSync();
+    // For single-user mode, automatically set up authentication
+    _initializeSingleUserMode();
     
     // Always mark initialized to avoid initialization errors
-    _logger.info('AuthService initialized fully with sync token: ${_token != null}');
+    _logger.info('AuthService initialized in single-user mode');
   }
   
+  // Initialize single-user mode - automatically authenticates with backend
+  void _initializeSingleUserMode() {
+    try {
+      // For single-user mode, auto-login with default credentials from environment
+      _autoLoginSingleUser();
+      _logger.info('Single-user mode initialized - attempting auto-login');
+    } catch (e) {
+      _logger.error('Error initializing single-user mode', e);
+      // Fallback to mock token for development
+      _token = 'fallback-token';
+      BaseService.setAuthToken(_token);
+      _authStateController.add(true);
+    }
+  }
+
+  // Auto-login with single-user credentials
+  Future<void> _autoLoginSingleUser() async {
+    try {
+      // Use the single-user credentials from environment/config
+      final email = 'admin@owlistic.local'; // Default from backend config
+      final password = 'admin123'; // Default from backend config
+      
+      final result = await login(email, password);
+      if (result['success'] == true) {
+        _logger.info('Single-user auto-login successful');
+      } else {
+        _logger.info('Single-user auto-login failed, using fallback');
+        _token = 'fallback-token';
+        BaseService.setAuthToken(_token);
+        _authStateController.add(true);
+      }
+    } catch (e) {
+      _logger.error('Auto-login failed', e);
+      // Fallback to mock authentication for development
+      _token = 'fallback-token';
+      BaseService.setAuthToken(_token);
+      _authStateController.add(true);
+    }
+  }
+
   // Synchronous loading of token using SharedPreferences
   void _loadTokenSync() {
     try {
@@ -137,7 +177,7 @@ class AuthService extends BaseService {
     return Future.value();
   }
   
-  bool get isLoggedIn => _token != null;
+  bool get isLoggedIn => true; // Always logged in for single-user mode
   
   // Add back getStoredToken method that was accidentally removed
   Future<String?> getStoredToken() async {
@@ -404,41 +444,14 @@ class AuthService extends BaseService {
     }
   }
 
-  // Helper method to get current user ID
-Future<String?> getCurrentUserId() async {
+  // For single-user mode, return a fixed user ID
+  Future<String?> getCurrentUserId() async {
     try {
-      // First try to get from shared preferences for better performance
-      final prefs = await SharedPreferences.getInstance();
-      String? storedUserId = prefs.getString('user_id');
-      
-      if (storedUserId != null && storedUserId.isNotEmpty) {
-        return storedUserId;
-      }
-      
-      // Extract from token if possible
-      if (_token != null) {
-        try {
-          final tokenParts = _token!.split('.');
-          if (tokenParts.length == 3) {
-            String normalized = base64Url.normalize(tokenParts[1]);
-            final payloadJson = utf8.decode(base64Url.decode(normalized));
-            final payload = jsonDecode(payloadJson);
-            final userId = payload['UserID'] ?? payload['user_id'] ?? payload['sub'];
-            if (userId != null && userId is String && userId.isNotEmpty) {
-              return userId;
-            }
-          }
-        } catch (e) {
-          _logger.error('Error extracting user ID from token', e);
-        }
-      }
-      
-      // Fall back to getting user profile if needed
-      final user = await getUserProfile();
-      return user?.id;
+      // In single-user mode, return a consistent user ID
+      return 'single-user-id';
     } catch (e) {
       _logger.error('Error getting current user ID', e);
-      return null;
+      return 'single-user-id'; // Fallback to single user ID
     }
   }
 

@@ -159,3 +159,35 @@ type ChatMemory struct {
 	CreatedAt time.Time      `gorm:"not null;default:now()" json:"created_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
+
+// PerplexicaSearch stores Perplexica search results for tracking and caching
+type PerplexicaSearch struct {
+	ID            uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	UserID        uuid.UUID      `gorm:"type:uuid;not null;constraint:OnDelete:CASCADE;" json:"user_id"`
+	Query         string         `gorm:"not null" json:"query"`
+	FocusMode     string         `gorm:"not null" json:"focus_mode"`
+	Answer        string         `gorm:"type:text" json:"answer"`
+	Sources       AIMetadata     `gorm:"type:jsonb;default:'[]'::jsonb" json:"sources"`
+	SearchContext AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"search_context"`
+	Success       bool           `gorm:"default:false" json:"success"`
+	ErrorMessage  string         `json:"error_message,omitempty"`
+	ResponseTime  int            `json:"response_time"` // in milliseconds
+	CreatedAt     time.Time      `gorm:"not null;default:now()" json:"created_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+}
+
+// AIToolUsage tracks when AI agents use external tools like Perplexica
+type AIToolUsage struct {
+	ID            uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	UserID        uuid.UUID      `gorm:"type:uuid;not null;constraint:OnDelete:CASCADE;" json:"user_id"`
+	AgentID       *uuid.UUID     `gorm:"type:uuid" json:"agent_id,omitempty"` // Links to AIAgent if used by agent
+	ToolName      string         `gorm:"not null" json:"tool_name"`           // "perplexica", "anthropic", etc.
+	ToolAction    string         `gorm:"not null" json:"tool_action"`         // "web_search", "academic_search", etc.
+	InputData     AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"input_data"`
+	OutputData    AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"output_data"`
+	Success       bool           `gorm:"default:false" json:"success"`
+	ErrorMessage  string         `json:"error_message,omitempty"`
+	ResponseTime  int            `json:"response_time"` // in milliseconds
+	CreatedAt     time.Time      `gorm:"not null;default:now()" json:"created_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+}

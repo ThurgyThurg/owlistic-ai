@@ -1,12 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
-import 'package:owlistic/viewmodel/login_viewmodel.dart';
 import 'package:owlistic/screens/home_screen.dart';
-import 'package:owlistic/screens/login_screen.dart';
-// register_screen.dart import removed - single user system
 import 'package:owlistic/screens/notebooks_screen.dart';
 import 'package:owlistic/screens/notebook_detail_screen.dart';
 import 'package:owlistic/screens/notes_screen.dart';
@@ -24,50 +19,16 @@ class AppRouter {
   
   late final GoRouter router;
 
-  AppRouter(BuildContext context, {Stream<dynamic>? authStateChanges}) {
+  AppRouter(BuildContext context) {
     router = GoRouter(
-      refreshListenable: authStateChanges != null 
-          ? GoRouterRefreshStream(authStateChanges)
-          : GoRouterRefreshStream(),
       debugLogDiagnostics: true,
       initialLocation: '/',
-      redirect: (BuildContext context, GoRouterState state) {
-        try {
-          final loginViewModel = context.read<LoginViewModel>();
-          final bool isLoggedIn = loginViewModel.isLoggedIn;
-          final bool isLoggingIn = state.fullPath == '/login';
-          
-          _logger.debug('GoRouter redirect: isLoggedIn=$isLoggedIn, currentPath=${state.fullPath}');
-          
-          // If not logged in and not on login page, redirect to login
-          if (!isLoggedIn && !isLoggingIn) {
-            _logger.debug('Redirecting to login - user not authenticated');
-            return '/login';
-          }
-          
-          // If logged in and on login page, redirect to home
-          if (isLoggedIn && isLoggingIn) {
-            _logger.debug('Redirecting to home - user already authenticated');
-            return '/';
-          }
-          
-          // No redirection needed
-          return null;
-        } catch (e) {
-          _logger.error('Error in router redirect', e);
-          return '/login';
-        }
-      },
       routes: [
         GoRoute(
           path: '/',
           builder: (context, state) => const HomeScreen(),
         ),
-        GoRoute(
-          path: '/login',
-          builder: (context, state) => const LoginScreen(),
-        ),
-        // Register route removed - single user system
+        // Login route removed - single user system with external auth
         GoRoute(
           path: '/notebooks',
           builder: (context, state) => const NotebooksScreen(),
@@ -119,18 +80,3 @@ class AppRouter {
   }
 }
 
-// Helper class to convert Stream to Listenable for GoRouter
-class GoRouterRefreshStream extends ChangeNotifier {
-  late final Stream<dynamic>? _stream;
-  StreamSubscription<dynamic>? _subscription;
-
-  GoRouterRefreshStream([Stream<dynamic>? stream]) : _stream = stream {
-    _subscription = _stream?.listen((_) => notifyListeners());
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-}

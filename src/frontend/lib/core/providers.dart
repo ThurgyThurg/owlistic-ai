@@ -12,7 +12,6 @@ import 'package:owlistic/services/block_service.dart';
 import 'package:owlistic/services/user_service.dart';
 import 'package:owlistic/services/zettelkasten_service.dart';
 import 'package:owlistic/utils/document_builder.dart';
-import 'package:owlistic/config/app_config.dart';
 
 // Import ViewModels
 import 'package:owlistic/viewmodel/notebooks_viewmodel.dart';
@@ -21,8 +20,7 @@ import 'package:owlistic/viewmodel/note_editor_viewmodel.dart';
 import 'package:owlistic/viewmodel/tasks_viewmodel.dart';
 import 'package:owlistic/viewmodel/theme_viewmodel.dart';
 import 'package:owlistic/viewmodel/trash_viewmodel.dart';
-import 'package:owlistic/viewmodel/login_viewmodel.dart';
-import 'package:owlistic/viewmodel/register_viewmodel.dart';
+// Login and register viewmodels removed - single user system
 import 'package:owlistic/viewmodel/home_viewmodel.dart';
 import 'package:owlistic/viewmodel/user_profile_viewmodel.dart';
 
@@ -33,8 +31,7 @@ import 'package:owlistic/providers/note_editor_provider.dart';
 import 'package:owlistic/providers/tasks_provider.dart';
 import 'package:owlistic/providers/theme_provider.dart';
 import 'package:owlistic/providers/trash_provider.dart';
-import 'package:owlistic/providers/login_provider.dart';
-import 'package:owlistic/providers/register_provider.dart';
+// Login and register providers removed - single user system
 import 'package:owlistic/providers/home_provider.dart';
 import 'package:owlistic/providers/user_profile_provider.dart';
 import 'package:owlistic/providers/zettelkasten_provider.dart';
@@ -110,18 +107,7 @@ final List<SingleChildWidget> appProviders = [
       themeService: context.read<ThemeService>(),
     )..initialize(),
   ),
-  ChangeNotifierProvider<RegisterViewModel>(
-    create: (context) => RegisterProvider(
-      authService: context.read<AuthService>(),
-      webSocketService: context.read<WebSocketService>(),
-    ),
-  ),
-  ChangeNotifierProvider<LoginViewModel>(
-    create: (context) => LoginProvider(
-      authService: context.read<AuthService>(),
-      webSocketService: context.read<WebSocketService>(),
-    ),
-  ),
+  // Login and register providers removed - single user system
   ChangeNotifierProvider<HomeViewModel>(
     create: (context) => HomeProvider(
       authService: context.read<AuthService>(),
