@@ -47,6 +47,9 @@ class AuthService extends BaseService {
       BaseService.setAuthToken(_token);
       _authStateController.add(true);
       _logger.info('Single-user mode initialized - authentication bypassed');
+      
+      // Immediately configure the server URL
+      _configureServerUrl();
     } catch (e) {
       _logger.error('Error initializing single-user mode', e);
       // Fallback to mock token for development
@@ -160,6 +163,24 @@ class AuthService extends BaseService {
       }
     }).catchError((e) {
       _logger.error('Error loading token from secure storage', e);
+    });
+  }
+  
+  // Configure server URL for single-user mode
+  void _configureServerUrl() {
+    // Run asynchronously to avoid blocking initialization
+    Future.delayed(Duration.zero, () async {
+      // Clear any existing URL first
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('api_url');
+        BaseService.resetCachedUrl();
+        _logger.debug('Cleared existing API URL from SharedPreferences');
+      } catch (e) {
+        _logger.error('Error clearing API URL', e);
+      }
+      
+      await initialize();
     });
   }
   

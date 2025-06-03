@@ -7,9 +7,13 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - nats
-      - chroma
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      chroma:
+        condition: service_healthy
+    restart: unless-stopped
     environment:
       - APP_ORIGINS=http://localhost*,http://owlistic*,http://owlistic-app*,http://*:8080,http://*:80,${SERVER_URL}*,https://secondbrain.graham29.com,http://secondbrain.graham29.com
       - BROKER_ADDRESS=nats:4222
@@ -65,6 +69,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   nats:
     image: nats
@@ -81,6 +90,11 @@ services:
       - nats_data:/var/lib/nats/data
     networks:
       - events
+    healthcheck:
+      test: ["CMD-SHELL", "nats-server --version || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   chroma:
     image: chromadb/chroma:latest
@@ -94,6 +108,11 @@ services:
       - chroma_data:/chroma/chroma
     networks:
       - server
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
