@@ -425,6 +425,11 @@ class AuthService extends BaseService {
     
     if (_token == null) return null;
     
+    // For single-user mode, use the getCurrentUser method
+    if (_token == 'single-user-token') {
+      return await getCurrentUser();
+    }
+    
     try {
       // Extract user info from JWT payload
       final tokenParts = _token!.split('.');

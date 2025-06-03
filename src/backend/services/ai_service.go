@@ -901,7 +901,7 @@ func (ai *AIService) CreateProjectNotebook(ctx context.Context, userID uuid.UUID
 	var noteIDs []uuid.UUID
 	if breakdown != nil {
 		if stepsData, exists := breakdown["steps"]; exists {
-			if _, ok := stepsData.([]interface{}); ok {
+			if steps, ok := stepsData.([]interface{}); ok {
 				// Create a summary note with all steps
 				noteData := map[string]interface{}{
 					"title":       projectName + " - Task Breakdown",
@@ -914,6 +914,68 @@ func (ai *AIService) CreateProjectNotebook(ctx context.Context, userID uuid.UUID
 					log.Printf("Failed to create project note: %v", err)
 				} else {
 					noteIDs = append(noteIDs, note.ID)
+					
+					// Create content blocks for each step
+					log.Printf("Creating %d step blocks for note %s", len(steps), note.ID)
+					for i, step := range steps {
+						if stepMap, ok := step.(map[string]interface{}); ok {
+							stepTitle := "Untitled Step"
+							stepDesc := "No description"
+							
+							if title, exists := stepMap["title"]; exists {
+								if titleStr, ok := title.(string); ok {
+									stepTitle = titleStr
+								}
+							}
+							
+							if desc, exists := stepMap["description"]; exists {
+								if descStr, ok := desc.(string); ok {
+									stepDesc = descStr
+								}
+							}
+							
+							log.Printf("Creating step %d: %s", i+1, stepTitle)
+							
+							// Create heading block for step - use higher order numbers to avoid conflicts with default block
+							headingBlock := models.Block{
+								ID:      uuid.New(),
+								UserID:  userID,
+								NoteID:  note.ID,
+								Type:    "header",
+								Order:   float64(100 + i*10 + 1), // Start from 100 to avoid conflicts
+								Content: map[string]interface{}{
+									"text":  fmt.Sprintf("Step %d: %s", i+1, stepTitle),
+									"level": 2,
+								},
+								Metadata: models.BlockMetadata{},
+							}
+							
+							if err := ai.db.Create(&headingBlock).Error; err != nil {
+								log.Printf("Failed to create heading block for step %d: %v", i+1, err)
+								continue
+							}
+							
+							// Create text block for step description
+							textBlock := models.Block{
+								ID:      uuid.New(),
+								UserID:  userID,
+								NoteID:  note.ID,
+								Type:    "text",
+								Order:   float64(100 + i*10 + 2),
+								Content: map[string]interface{}{
+									"text": stepDesc,
+								},
+								Metadata: models.BlockMetadata{},
+							}
+							
+							if err := ai.db.Create(&textBlock).Error; err != nil {
+								log.Printf("Failed to create text block for step %d: %v", i+1, err)
+							} else {
+								log.Printf("Successfully created text block for step %d", i+1)
+							}
+						}
+					}
+					log.Printf("Finished creating blocks for note %s", note.ID)
 				}
 			}
 		}
