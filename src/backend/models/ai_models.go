@@ -64,7 +64,20 @@ func (am *AIMetadata) Scan(value interface{}) error {
 		return errors.New("type assertion to []byte failed")
 	}
 
-	return json.Unmarshal(bytes, am)
+	// Try to unmarshal as AIMetadata (object) first
+	if err := json.Unmarshal(bytes, am); err != nil {
+		// If it fails, it might be an array from old records
+		// Try to unmarshal as array and wrap it
+		var arr []interface{}
+		if arrErr := json.Unmarshal(bytes, &arr); arrErr == nil {
+			// Successfully parsed as array, wrap it in a metadata object
+			*am = AIMetadata{"steps": arr}
+			return nil
+		}
+		// If both fail, return the original error
+		return err
+	}
+	return nil
 }
 
 // Embeddings stores vector embeddings as JSON
