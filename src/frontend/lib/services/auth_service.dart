@@ -57,13 +57,27 @@ class AuthService extends BaseService {
   // Auto-login with single-user credentials
   Future<void> _autoLoginSingleUser() async {
     try {
+      // First check if we already have a valid token stored
+      final storedToken = await getStoredToken();
+      if (storedToken != null && storedToken.isNotEmpty && storedToken != 'fallback-token') {
+        _logger.info('Found existing valid token, skipping auto-login');
+        return;
+      }
+      
       // Use the single-user credentials from environment/config
       final email = 'admin@owlistic.local'; // Default from backend config
       final password = 'admin123'; // Default from backend config
       
+      _logger.info('Attempting auto-login with single-user credentials');
       final result = await login(email, password);
       if (result['success'] == true) {
         _logger.info('Single-user auto-login successful');
+        // Store the user ID from the login response
+        if (result['userId'] != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_id', result['userId'].toString());
+          _logger.info('Stored user ID: ${result['userId']}');
+        }
       } else {
         _logger.info('Single-user auto-login failed, using fallback');
         _token = 'fallback-token';
@@ -71,7 +85,7 @@ class AuthService extends BaseService {
         _authStateController.add(true);
       }
     } catch (e) {
-      _logger.error('Auto-login failed', e);
+      _logger.error('Auto-login failed: $e');
       // Fallback to mock authentication for development
       _token = 'fallback-token';
       BaseService.setAuthToken(_token);
@@ -444,14 +458,49 @@ class AuthService extends BaseService {
     }
   }
 
-  // For single-user mode, return a fixed user ID
+  // For single-user mode, extract user ID from token or API
   Future<String?> getCurrentUserId() async {
     try {
-      // In single-user mode, return a consistent user ID
-      return 'single-user-id';
+      // First try to get from shared preferences for better performance
+      final prefs = await SharedPreferences.getInstance();
+      String? storedUserId = prefs.getString('user_id');
+      
+      if (storedUserId != null && storedUserId.isNotEmpty) {
+        return storedUserId;
+      }
+      
+      // Extract from token if possible
+      if (_token != null && _token != 'fallback-token' && _token != 'single-user-mode-token') {
+        try {
+          final tokenParts = _token!.split('.');
+          if (tokenParts.length == 3) {
+            String normalized = base64Url.normalize(tokenParts[1]);
+            final payloadJson = utf8.decode(base64Url.decode(normalized));
+            final payload = jsonDecode(payloadJson);
+            final userId = payload['UserID'] ?? payload['user_id'] ?? payload['sub'];
+            if (userId != null && userId is String && userId.isNotEmpty) {
+              // Store for future use
+              await prefs.setString('user_id', userId);
+              return userId;
+            }
+          }
+        } catch (e) {
+          _logger.error('Error extracting user ID from token', e);
+        }
+      }
+      
+      // Fall back to getting user profile if needed
+      final user = await getUserProfile();
+      if (user?.id != null && user!.id.isNotEmpty) {
+        await prefs.setString('user_id', user.id);
+        return user.id;
+      }
+      
+      // Final fallback - shouldn't happen in single-user mode with proper auth
+      return null;
     } catch (e) {
       _logger.error('Error getting current user ID', e);
-      return 'single-user-id'; // Fallback to single user ID
+      return null;
     }
   }
 
