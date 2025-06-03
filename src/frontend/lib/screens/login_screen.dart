@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:owlistic/viewmodel/login_viewmodel.dart';
 import 'package:owlistic/utils/logger.dart';
 import 'package:owlistic/widgets/app_logo.dart';
-import 'package:owlistic/config/app_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);

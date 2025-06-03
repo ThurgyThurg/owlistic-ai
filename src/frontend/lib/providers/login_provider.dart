@@ -89,6 +89,8 @@ class LoginProvider with ChangeNotifier implements LoginViewModel {
       final response = await _authService.login(email, password);
       final success = response['success'] == true;
       
+      _logger.info('Login response: $response');
+      
       if (success) {
         _logger.info('Login successful for user: $email');
         

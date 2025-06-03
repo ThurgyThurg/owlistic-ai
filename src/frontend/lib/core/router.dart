@@ -32,24 +32,31 @@ class AppRouter {
       debugLogDiagnostics: true,
       initialLocation: '/',
       redirect: (BuildContext context, GoRouterState state) {
-        final loginViewModel = context.read<LoginViewModel>();
-        final bool isLoggedIn = loginViewModel.isLoggedIn;
-        final bool isLoggingIn = state.fullPath == '/login';
-        
-        _logger.debug('GoRouter redirect: isLoggedIn=$isLoggedIn, currentPath=${state.fullPath}');
-        
-        // If not logged in and not on login page, redirect to login
-        if (!isLoggedIn && !isLoggingIn) {
+        try {
+          final loginViewModel = context.read<LoginViewModel>();
+          final bool isLoggedIn = loginViewModel.isLoggedIn;
+          final bool isLoggingIn = state.fullPath == '/login';
+          
+          _logger.debug('GoRouter redirect: isLoggedIn=$isLoggedIn, currentPath=${state.fullPath}');
+          
+          // If not logged in and not on login page, redirect to login
+          if (!isLoggedIn && !isLoggingIn) {
+            _logger.debug('Redirecting to login - user not authenticated');
+            return '/login';
+          }
+          
+          // If logged in and on login page, redirect to home
+          if (isLoggedIn && isLoggingIn) {
+            _logger.debug('Redirecting to home - user already authenticated');
+            return '/';
+          }
+          
+          // No redirection needed
+          return null;
+        } catch (e) {
+          _logger.error('Error in router redirect', e);
           return '/login';
         }
-        
-        // If logged in and on login page, redirect to home
-        if (isLoggedIn && isLoggingIn) {
-          return '/';
-        }
-        
-        // No redirection needed
-        return null;
       },
       routes: [
         GoRoute(

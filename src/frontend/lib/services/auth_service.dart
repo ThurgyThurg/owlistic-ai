@@ -107,6 +107,18 @@ class AuthService extends BaseService {
   Future<void> initialize() async {
     _logger.debug('Initializing AuthService explicitly');
     
+    // Set server URL in SharedPreferences for BaseService
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUrl = prefs.getString('api_url');
+      if (currentUrl == null || currentUrl.isEmpty) {
+        await prefs.setString('api_url', 'http://localhost:8080');
+        _logger.debug('Server URL set in SharedPreferences: http://localhost:8080');
+      }
+    } catch (e) {
+      _logger.error('Error setting server URL in SharedPreferences', e);
+    }
+    
     // Make sure token is loaded into BaseService
     if (_token != null) {
       BaseService.setAuthToken(_token);
@@ -180,7 +192,7 @@ class AuthService extends BaseService {
         
         _logger.debug('Login successful, token received');
         await _storeToken(token);
-        return {'success': true, 'token': token, 'userId': data['user_id'] ?? data['userId']};
+        return {'success': true, 'token': token, 'userId': data['userId'] ?? data['user_id']};
       } else {
         _logger.error('Login failed with status: ${response.statusCode}, body: ${response.body}');
         throw Exception('Failed to login: ${response.body}');
