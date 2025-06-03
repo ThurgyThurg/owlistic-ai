@@ -109,6 +109,26 @@ func main() {
 	aiRoutes := routes.NewAIRoutes(db.DB)
 	aiRoutes.RegisterRoutes(protectedGroup)
 
+	// Initialize Telegram service and routes
+	aiService := services.NewAIService(db.DB)
+	telegramService, err := services.NewTelegramService(db.DB, aiService)
+	if err != nil {
+		log.Printf("Failed to initialize Telegram service: %v", err)
+		log.Printf("Telegram bot will not be available")
+	} else {
+		// Register Telegram routes
+		telegramRoutes := routes.NewTelegramRoutes(db.DB, telegramService)
+		telegramRoutes.RegisterRoutes(protectedGroup)
+
+		// Start Telegram bot listening in background
+		go func() {
+			if err := telegramService.StartListening(); err != nil {
+				log.Printf("Telegram bot stopped: %v", err)
+			}
+		}()
+		log.Println("Telegram bot started and listening for messages...")
+	}
+
 	// Register debug routes for monitoring events
 	routes.SetupDebugRoutes(router, db)
 
