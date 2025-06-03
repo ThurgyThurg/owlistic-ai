@@ -83,9 +83,8 @@ func (ar *AIRoutes) processNoteWithAI(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	// Verify note belongs to user
@@ -124,9 +123,8 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	var aiNote models.AIEnhancedNote
@@ -182,9 +180,8 @@ func (ar *AIRoutes) semanticSearch(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	// For now, fall back to text search since semantic search needs vector DB
@@ -224,9 +221,8 @@ func (ar *AIRoutes) createAIProject(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	// Check if this project was created from a task breakdown
@@ -277,9 +273,8 @@ func (ar *AIRoutes) getAIProjects(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	var projects []models.AIProject
@@ -303,9 +298,8 @@ func (ar *AIRoutes) getAIProject(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	var project models.AIProject
@@ -329,9 +323,8 @@ func (ar *AIRoutes) updateAIProject(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	var request struct {
@@ -390,9 +383,8 @@ func (ar *AIRoutes) deleteAIProject(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	result := ar.db.Where("id = ? AND user_id = ?", projectID, userID).Delete(&models.AIProject{})
@@ -424,9 +416,8 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	agent := models.AIAgent{
@@ -491,9 +482,8 @@ func (ar *AIRoutes) getAgentRuns(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	limit := 20
@@ -527,9 +517,8 @@ func (ar *AIRoutes) getAgentRun(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	var agent models.AIAgent
@@ -582,9 +571,8 @@ func (ar *AIRoutes) chatWithAI(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	// Use the chat service to handle the request
@@ -608,9 +596,8 @@ func (ar *AIRoutes) getChatHistory(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	var messages []models.ChatMemory
@@ -646,9 +633,8 @@ func (ar *AIRoutes) breakDownTask(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	// Call AI service to break down the task
@@ -696,9 +682,8 @@ func (ar *AIRoutes) getChatSessions(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	sessions, err := ar.chatService.GetChatSessions(c.Request.Context(), userID.(uuid.UUID))
@@ -719,9 +704,8 @@ func (ar *AIRoutes) deleteChatSession(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	err := ar.chatService.DeleteChatSession(c.Request.Context(), userID.(uuid.UUID), sessionID)
@@ -749,9 +733,8 @@ func (ar *AIRoutes) runReasoningAgent(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	// Execute reasoning loop in background
@@ -787,9 +770,8 @@ func (ar *AIRoutes) getReasoningAgentResult(c *gin.Context) {
 	// For single-user mode, use default user ID if not authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
-		// Default to single-user UUID for single-user systems
-		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
-		userID = singleUserUUID
+		// For single-user systems, use the first user in the database
+		userID = getSingleUserID(ar.db)
 	}
 
 	var agent models.AIAgent
@@ -800,4 +782,16 @@ func (ar *AIRoutes) getReasoningAgentResult(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, agent)
+}
+
+// getSingleUserID returns the first user ID for single-user systems
+func getSingleUserID(db *gorm.DB) uuid.UUID {
+	var user models.User
+	if err := db.First(&user).Error; err != nil {
+		log.Printf("Warning: No users found in database for single-user mode")
+		// Return the intended single-user UUID as fallback
+		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		return singleUserUUID
+	}
+	return user.ID
 }

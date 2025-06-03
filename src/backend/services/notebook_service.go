@@ -46,39 +46,14 @@ func (s *NotebookService) CreateNotebook(db *database.Database, notebookData map
 		return models.Notebook{}, ErrInvalidInput
 	}
 
-	// Debug: Check what users actually exist
-	var allUsers []models.User
-	if err := tx.Find(&allUsers).Error; err != nil {
-		log.Printf("Error fetching all users: %v", err)
-	} else {
-		log.Printf("All users in database: %d total", len(allUsers))
-		for _, user := range allUsers {
-			log.Printf("User ID: %s, Email: %s, Username: %s, Deleted: %v", 
-				user.ID.String(), user.Email, user.Username, user.DeletedAt.Valid)
-		}
-	}
-
 	var userCount int64
 	if err := tx.Model(&models.User{}).Where("id = ?", userID).Count(&userCount).Error; err != nil {
 		tx.Rollback()
-		log.Printf("Error counting users for ID %s: %v", userID.String(), err)
 		return models.Notebook{}, err
 	}
 
-	log.Printf("User count check for ID %s: found %d users", userID.String(), userCount)
-	
-	// Also try to find the specific user
-	var specificUser models.User
-	err = tx.Where("id = ?", userID).First(&specificUser).Error
-	if err != nil {
-		log.Printf("Direct user lookup failed for ID %s: %v", userID.String(), err)
-	} else {
-		log.Printf("Direct user lookup succeeded: %s (%s)", specificUser.Email, specificUser.Username)
-	}
-	
 	if userCount == 0 {
 		tx.Rollback()
-		log.Printf("User not found, rolling back transaction for user ID: %s", userID.String())
 		return models.Notebook{}, ErrUserNotFound
 	}
 
