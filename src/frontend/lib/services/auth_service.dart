@@ -39,12 +39,14 @@ class AuthService extends BaseService {
     _logger.info('AuthService initialized in single-user mode');
   }
   
-  // Initialize single-user mode - automatically authenticates with backend
+  // Initialize single-user mode - skip authentication entirely
   void _initializeSingleUserMode() {
     try {
-      // For single-user mode, auto-login with default credentials from environment
-      _autoLoginSingleUser();
-      _logger.info('Single-user mode initialized - attempting auto-login');
+      // For single-user mode, just set a mock token and mark as authenticated
+      _token = 'single-user-token';
+      BaseService.setAuthToken(_token);
+      _authStateController.add(true);
+      _logger.info('Single-user mode initialized - authentication bypassed');
     } catch (e) {
       _logger.error('Error initializing single-user mode', e);
       // Fallback to mock token for development
@@ -424,87 +426,29 @@ class AuthService extends BaseService {
     }
   }
   
-  // Get user info from API endpoint
+  // Get user info for single-user mode
   Future<User?> getCurrentUser() async {
-    if (!isLoggedIn) {
-      _logger.debug('Cannot get user profile: not logged in');
-      return null;
-    }
-    
     try {
-      final userId = await getCurrentUserId();
-      final response = await authenticatedGet('/api/v1/users/$userId');
-      
-      if (response.statusCode == 200) {
-        final userData = jsonDecode(response.body);
-        final user = User.fromJson(userData);
-        
-        // Store user ID in shared preferences for offline access
-        if (user.id.isNotEmpty) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_id', user.id);
-          _logger.debug('Stored user ID in preferences: ${user.id}');
-        }
-        
-        return user;
-      } else if (response.statusCode == 401) {
-        // Token is invalid, clear it
-        await clearToken();
-        return null;
-      } else {
-        _logger.error('Failed to get user profile: ${response.statusCode}');
-        return null;
-      }
+      // For single-user mode, return a mock user
+      return User(
+        id: 'single-user',
+        email: 'user@example.com',
+        username: 'user',
+        displayName: 'User',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        preferences: {},
+      );
     } catch (e) {
       _logger.error('Error getting current user', e);
       return null;
     }
   }
+  
 
-  // For single-user mode, extract user ID from token or API
+  // For single-user mode, return a consistent user ID
   Future<String?> getCurrentUserId() async {
-    try {
-      // First try to get from shared preferences for better performance
-      final prefs = await SharedPreferences.getInstance();
-      String? storedUserId = prefs.getString('user_id');
-      
-      if (storedUserId != null && storedUserId.isNotEmpty) {
-        return storedUserId;
-      }
-      
-      // Extract from token if possible
-      if (_token != null && _token != 'fallback-token' && _token != 'single-user-mode-token') {
-        try {
-          final tokenParts = _token!.split('.');
-          if (tokenParts.length == 3) {
-            String normalized = base64Url.normalize(tokenParts[1]);
-            final payloadJson = utf8.decode(base64Url.decode(normalized));
-            final payload = jsonDecode(payloadJson);
-            final userId = payload['UserID'] ?? payload['user_id'] ?? payload['sub'];
-            if (userId != null && userId is String && userId.isNotEmpty) {
-              // Store for future use
-              await prefs.setString('user_id', userId);
-              return userId;
-            }
-          }
-        } catch (e) {
-          _logger.error('Error extracting user ID from token', e);
-        }
-      }
-      
-      // Fall back to getting user profile if needed
-      final user = await getUserProfile();
-      if (user?.id != null && user!.id.isNotEmpty) {
-        await prefs.setString('user_id', user.id);
-        return user.id;
-      }
-      
-      // Final fallback - shouldn't happen in single-user mode with proper auth
-      return null;
-    } catch (e) {
-      _logger.error('Error getting current user ID', e);
-      return null;
-    }
+    return 'single-user';
   }
 
   Future<void> clearPreferences() async {

@@ -126,27 +126,6 @@ class HomeProvider with ChangeNotifier implements HomeViewModel {
   @override
   Stream<bool> get authStateChanges => _authService.authStateChanges;
   
-  @override
-  Future<void> logout() async {
-    _isLoading = true;
-    notifyListeners();
-    
-    try {
-      _logger.info('Logging out user');
-      await _authService.logout();
-      _logger.info('Logout successful');
-      
-      // Reset state after logout
-      resetState();
-    } catch (e) {
-      _logger.error('Error during logout', e);
-      _errorMessage = 'Error logging out: ${e.toString()}';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-  
   // Notebook functionality
   @override
   List<Notebook> get recentNotebooks => _recentNotebooks;

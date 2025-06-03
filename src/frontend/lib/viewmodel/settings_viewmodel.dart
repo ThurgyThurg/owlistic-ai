@@ -1,12 +1,8 @@
 import 'package:flutter/foundation.dart';
-import '../models/user.dart';
-import '../services/user_service.dart';
-import '../services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/logger.dart';
 
 class SettingsViewModel extends ChangeNotifier {
-  final UserService _userService = UserService();
-  final AuthService _authService = AuthService();
   final Logger _logger = Logger('SettingsViewModel');
   
   bool _isLoading = false;
@@ -34,14 +30,13 @@ class SettingsViewModel extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
       
-      final currentUser = await _authService.getCurrentUser();
-      if (currentUser != null && currentUser.preferences != null) {
-        final prefs = currentUser.preferences!;
-        _notificationsEnabled = prefs['notifications_enabled'] ?? true;
-        _noteReminders = prefs['note_reminders'] ?? true;
-        _taskReminders = prefs['task_reminders'] ?? true;
-        _aiInsights = prefs['ai_insights'] ?? true;
-      }
+      final prefs = await SharedPreferences.getInstance();
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      _noteReminders = prefs.getBool('note_reminders') ?? true;
+      _taskReminders = prefs.getBool('task_reminders') ?? true;
+      _aiInsights = prefs.getBool('ai_insights') ?? true;
+      
+      _logger.info('User preferences loaded successfully');
     } catch (e) {
       _logger.error('Failed to load user preferences', e);
       _errorMessage = 'Failed to load preferences';
@@ -114,30 +109,11 @@ class SettingsViewModel extends ChangeNotifier {
   
   Future<void> _updatePreferences() async {
     try {
-      final currentUser = await _authService.getCurrentUser();
-      if (currentUser == null) {
-        throw Exception('User not found');
-      }
-      
-      // Create updated preferences
-      final updatedPreferences = {
-        ...(currentUser.preferences ?? {}),
-        'notifications_enabled': _notificationsEnabled,
-        'note_reminders': _noteReminders,
-        'task_reminders': _taskReminders,
-        'ai_insights': _aiInsights,
-      };
-      
-      // Create a UserProfile with updated preferences
-      final profile = UserProfile(
-        username: currentUser.username,
-        displayName: currentUser.displayName,
-        profilePic: currentUser.profilePic,
-        preferences: updatedPreferences,
-      );
-      
-      // Update user profile with new preferences
-      final updatedUser = await _userService.updateUserProfile(currentUser.id, profile);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('notifications_enabled', _notificationsEnabled);
+      await prefs.setBool('note_reminders', _noteReminders);
+      await prefs.setBool('task_reminders', _taskReminders);
+      await prefs.setBool('ai_insights', _aiInsights);
       
       _logger.info('Preferences updated successfully');
     } catch (e) {

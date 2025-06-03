@@ -100,41 +100,9 @@ class SidebarDrawer extends StatelessWidget {
             },
           ),
           const Spacer(),
-          ListTile(
-            visualDensity: VisualDensity.compact,
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
-            onTap: () async {
-              _showLogoutConfirmation(context);
-            },
-          ),
         ],
       ),
     );
   }
 
-  void _showLogoutConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-              await context.read<HomeViewModel>().logout();
-            },
-            style: AppTheme.getDangerButtonStyle(),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -12,8 +12,6 @@ abstract class HomeViewModel extends BaseViewModel {
   bool get isLoggedIn;
   Stream<bool> get authStateChanges;
   
-  // Authentication methods
-  Future<void> logout();
   
   // Notebook functionality
   List<Notebook> get recentNotebooks;
