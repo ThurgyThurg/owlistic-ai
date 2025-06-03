@@ -6,6 +6,7 @@ ARG TARGETARCH
 
 # Accept SERVER_URL as build argument
 ARG SERVER_URL=http://localhost:8080
+ARG FALLBACK_SERVER_URL=http://localhost:8080
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -44,7 +45,7 @@ RUN flutter pub get
 RUN flutter create --platforms=web .
 
 # Build the web app with SERVER_URL passed as dart-define
-RUN flutter build web --release --dart-define=SERVER_URL=${SERVER_URL}
+RUN flutter build web --release --dart-define=SERVER_URL=${SERVER_URL} --dart-define=FALLBACK_SERVER_URL=${FALLBACK_SERVER_URL}
 
 # Second stage: Serve the app with Nginx
 FROM --platform=linux/$TARGETARCH nginx:alpine

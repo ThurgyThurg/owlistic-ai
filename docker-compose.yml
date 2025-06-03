@@ -44,6 +44,7 @@ services:
       dockerfile: Dockerfile
       args:
         - SERVER_URL=${SERVER_URL}
+        - FALLBACK_SERVER_URL=${SERVER_URL}
     ports:
       - "80:80"
     depends_on:

@@ -207,8 +207,14 @@ class WebSocketService {
       }
       _logger.debug('Using WebSocket URL from server URL: $wsUrl');
     } else {
-      wsUrl = AppConfig.defaultServerUrl.replaceFirst('http', 'ws') + '/ws';
-      _logger.warning('No server URL configured, using default: $wsUrl');
+      final defaultUrl = AppConfig.serverUrl;
+      if (defaultUrl.isNotEmpty) {
+        wsUrl = defaultUrl.replaceFirst('http', 'ws') + '/ws';
+        _logger.warning('No server URL configured, using default: $wsUrl');
+      } else {
+        wsUrl = 'ws://localhost/ws'; // Final fallback
+        _logger.error('No server URL available, using localhost fallback: $wsUrl');
+      }
     }
     
     final uri = Uri.parse(wsUrl);

@@ -56,13 +56,16 @@ abstract class BaseService {
     
     // Get base URL from SharedPreferences
     final baseUrl = await _getBaseUrl();
+    _logger.debug('BaseService.createUri - baseUrl from SharedPreferences: $baseUrl');
     
     if (baseUrl == null || baseUrl.isEmpty) {
+      _logger.error('Server URL not configured - baseUrl is null/empty');
       throw Exception('Server URL not configured. Please check your connection settings.');
     }
     
     // Build full URL
     String fullUrl = baseUrl + path;
+    _logger.debug('BaseService.createUri - constructed URL: $fullUrl');
     
     // Convert all query parameter values to strings
     Map<String, String>? stringParams;

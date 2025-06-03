@@ -108,14 +108,22 @@ class AuthService extends BaseService {
   Future<void> initialize() async {
     _logger.debug('Initializing AuthService explicitly');
     
+    // Debug: Print AppConfig values
+    _logger.debug('AppConfig debug info: ${AppConfig.debugInfo}');
+    
     // Set server URL in SharedPreferences for BaseService from AppConfig
     try {
       final prefs = await SharedPreferences.getInstance();
       final currentUrl = prefs.getString('api_url');
+      _logger.debug('Current URL in SharedPreferences: $currentUrl');
+      _logger.debug('AppConfig.serverUrl: ${AppConfig.serverUrl}');
+      
       if (currentUrl == null || currentUrl.isEmpty) {
         // Use the configured server URL from AppConfig (environment variable)
         await prefs.setString('api_url', AppConfig.serverUrl);
         _logger.debug('Server URL set in SharedPreferences: ${AppConfig.serverUrl}');
+      } else {
+        _logger.debug('Using existing URL from SharedPreferences: $currentUrl');
       }
     } catch (e) {
       _logger.error('Error setting server URL in SharedPreferences', e);
