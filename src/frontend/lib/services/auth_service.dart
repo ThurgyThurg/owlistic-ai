@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:owlistic/models/user.dart';
 import 'package:owlistic/utils/logger.dart';
+import 'package:owlistic/config/app_config.dart';
 import 'base_service.dart';
 
 class AuthService extends BaseService {
@@ -107,13 +108,14 @@ class AuthService extends BaseService {
   Future<void> initialize() async {
     _logger.debug('Initializing AuthService explicitly');
     
-    // Set server URL in SharedPreferences for BaseService
+    // Set server URL in SharedPreferences for BaseService from AppConfig
     try {
       final prefs = await SharedPreferences.getInstance();
       final currentUrl = prefs.getString('api_url');
       if (currentUrl == null || currentUrl.isEmpty) {
-        await prefs.setString('api_url', 'http://localhost:8080');
-        _logger.debug('Server URL set in SharedPreferences: http://localhost:8080');
+        // Use the configured server URL from AppConfig (environment variable)
+        await prefs.setString('api_url', AppConfig.serverUrl);
+        _logger.debug('Server URL set in SharedPreferences: ${AppConfig.serverUrl}');
       }
     } catch (e) {
       _logger.error('Error setting server URL in SharedPreferences', e);
@@ -174,6 +176,9 @@ class AuthService extends BaseService {
   // Authentication methods
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      // Ensure auth service is properly initialized before login
+      await initialize();
+      
       final response = await createPostRequest(
         '/api/v1/login',
         {

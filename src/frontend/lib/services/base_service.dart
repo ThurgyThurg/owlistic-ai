@@ -57,8 +57,12 @@ abstract class BaseService {
     // Get base URL from SharedPreferences
     final baseUrl = await _getBaseUrl();
     
+    if (baseUrl == null || baseUrl.isEmpty) {
+      throw Exception('Server URL not configured. Please check your connection settings.');
+    }
+    
     // Build full URL
-    String fullUrl = baseUrl! + path;
+    String fullUrl = baseUrl + path;
     
     // Convert all query parameter values to strings
     Map<String, String>? stringParams;
