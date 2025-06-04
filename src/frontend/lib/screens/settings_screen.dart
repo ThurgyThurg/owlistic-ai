@@ -413,6 +413,101 @@ class SettingsScreen extends ConsumerWidget {
                   const Text('• Create events in Google Calendar'),
                   const Text('• Get reminders and notifications'),
                   const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.info, color: Colors.blue, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Google Cloud Console Setup Required',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Before connecting, add this callback URL to your Google Cloud Console:',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: FutureBuilder<Map<String, dynamic>>(
+                                  future: calendarService.getOAuthConfig(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.hasData) {
+                                      return Text(
+                                        snapshot.data!['redirect_uri'] ?? 'Loading...',
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 12,
+                                          color: Colors.grey[800],
+                                        ),
+                                      );
+                                    } else {
+                                      return Text(
+                                        'Loading configuration...',
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy, size: 16),
+                                onPressed: () {
+                                  // TODO: Implement clipboard copy
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Copy the URL manually for now'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                tooltip: 'Copy URL',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '1. Go to Google Cloud Console → APIs & Services → Credentials\n'
+                          '2. Edit your OAuth 2.0 Client ID\n'
+                          '3. Add the above URL to "Authorized redirect URIs"\n'
+                          '4. Save and try connecting again',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -423,8 +518,12 @@ class SettingsScreen extends ConsumerWidget {
                             await launchUrl(Uri.parse(authUrl));
                             if (context.mounted) {
                               Navigator.of(context).pop();
-                              // Show dialog to enter auth code
-                              _showAuthCodeDialog(context, ref);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please complete the authorization in your browser. Return here and refresh to check connection status.'),
+                                  duration: Duration(seconds: 5),
+                                ),
+                              );
                             }
                           }
                         } catch (e) {
@@ -454,61 +553,4 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showAuthCodeDialog(BuildContext context, WidgetRef ref) {
-    final authCodeController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Enter Authorization Code'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'After authorizing in your browser, copy the authorization code and paste it here:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: authCodeController,
-              decoration: const InputDecoration(
-                labelText: 'Authorization Code',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (authCodeController.text.isNotEmpty) {
-                try {
-                  final calendarService = ref.read(calendarServiceProvider);
-                  await calendarService.connectGoogleCalendar(authCodeController.text);
-                  ref.read(googleCalendarConnectedProvider.notifier).state = true;
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Successfully connected to Google Calendar')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
-                  }
-                }
-              }
-            },
-            child: const Text('Connect'),
-          ),
-        ],
-      ),
-    );
-  }
 }

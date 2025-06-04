@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -36,6 +38,7 @@ func (cr *CalendarRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
 		calendarGroup.GET("/oauth/callback", cr.handleOAuthCallback)
 		calendarGroup.DELETE("/oauth/revoke", cr.revokeAccess)
 		calendarGroup.GET("/oauth/status", cr.getOAuthStatus)
+		calendarGroup.GET("/oauth/config", cr.getOAuthConfig)
 
 		// Calendar management
 		calendarGroup.GET("/calendars", cr.listCalendars)
@@ -499,4 +502,37 @@ func (cr *CalendarRoutes) performSync(c *gin.Context) {
 			"calendar_id": request.CalendarID,
 		})
 	}
+}
+
+// getOAuthConfig returns the current OAuth configuration for setup purposes
+func (cr *CalendarRoutes) getOAuthConfig(c *gin.Context) {
+	// This endpoint doesn't require authentication as it's for setup purposes
+	redirectURI := os.Getenv("GOOGLE_REDIRECT_URI")
+	
+	// Use same default logic as calendar service
+	if redirectURI == "" {
+		serverPort := os.Getenv("PORT")
+		if serverPort == "" {
+			serverPort = "8080"
+		}
+		redirectURI = fmt.Sprintf("http://localhost:%s/api/calendar/oauth/callback", serverPort)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"redirect_uri": redirectURI,
+		"setup_instructions": []string{
+			"1. Go to Google Cloud Console → APIs & Services → Credentials",
+			"2. Edit your OAuth 2.0 Client ID",
+			"3. Add the redirect_uri above to 'Authorized redirect URIs'",
+			"4. Save and ensure Google Calendar API is enabled",
+		},
+		"required_env_vars": []string{
+			"GOOGLE_CLIENT_ID",
+			"GOOGLE_CLIENT_SECRET", 
+		},
+		"optional_env_vars": map[string]string{
+			"GOOGLE_REDIRECT_URI": "Override the default redirect URI",
+			"PORT": "Server port (defaults to 8080)",
+		},
+	})
 }

@@ -94,7 +94,7 @@ class CalendarService extends BaseService {
 
   Future<String> getGoogleAuthUrl() async {
     try {
-      final response = await authenticatedGet('/api/calendar/google/auth-url');
+      final response = await authenticatedGet('/api/calendar/oauth/authorize');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -110,16 +110,11 @@ class CalendarService extends BaseService {
 
   Future<void> connectGoogleCalendar(String authCode) async {
     try {
-      final response = await authenticatedPost(
-        '/api/calendar/google/connect',
-        {
-          'auth_code': authCode,
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to connect Google Calendar');
-      }
+      // Note: The OAuth callback is handled automatically by the backend
+      // This method is kept for compatibility but may not be needed
+      // The actual connection happens when the user visits the auth URL
+      // and Google redirects to the backend callback
+      throw Exception('OAuth flow is handled automatically via callback URL. Please use the auth URL directly.');
     } catch (e) {
       logger.error('Error connecting Google Calendar: $e');
       throw e;
@@ -128,7 +123,7 @@ class CalendarService extends BaseService {
 
   Future<void> disconnectGoogleCalendar() async {
     try {
-      final response = await authenticatedPost('/api/calendar/google/disconnect', {});
+      final response = await authenticatedDelete('/api/calendar/oauth/revoke');
 
       if (response.statusCode != 200) {
         throw Exception('Failed to disconnect Google Calendar');
@@ -141,7 +136,7 @@ class CalendarService extends BaseService {
 
   Future<void> syncWithGoogle() async {
     try {
-      final response = await authenticatedPost('/api/calendar/google/sync', {});
+      final response = await authenticatedPost('/api/calendar/sync', {});
 
       if (response.statusCode != 200) {
         throw Exception('Failed to sync with Google Calendar');
@@ -154,17 +149,32 @@ class CalendarService extends BaseService {
 
   Future<bool> isGoogleCalendarConnected() async {
     try {
-      final response = await authenticatedGet('/api/calendar/google/status');
+      final response = await authenticatedGet('/api/calendar/oauth/status');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['connected'] ?? false;
+        return data['has_access'] ?? false;
       } else {
         return false;
       }
     } catch (e) {
       logger.error('Error checking Google Calendar connection: $e');
       return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> getOAuthConfig() async {
+    try {
+      final response = await get('/api/calendar/oauth/config');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to get OAuth config');
+      }
+    } catch (e) {
+      logger.error('Error getting OAuth config: $e');
+      throw e;
     }
   }
 }

@@ -40,8 +40,19 @@ func NewCalendarService(db *gorm.DB) (*CalendarService, error) {
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 	redirectURL := os.Getenv("GOOGLE_REDIRECT_URI")
 
-	if clientID == "" || clientSecret == "" || redirectURL == "" {
-		return nil, fmt.Errorf("missing Google OAuth credentials in environment variables")
+	if clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("missing required Google OAuth credentials: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET")
+	}
+
+	// Use default redirect URI if not provided
+	if redirectURL == "" {
+		serverPort := os.Getenv("PORT")
+		if serverPort == "" {
+			serverPort = "8080"
+		}
+		redirectURL = fmt.Sprintf("http://localhost:%s/api/calendar/oauth/callback", serverPort)
+		log.Printf("Using default Google OAuth redirect URI: %s", redirectURL)
+		log.Printf("Make sure to add this URL to your Google Cloud Console OAuth 2.0 Client ID authorized redirect URIs")
 	}
 
 	oauth2Config := &oauth2.Config{
