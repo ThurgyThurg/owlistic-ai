@@ -15,7 +15,10 @@ class NotebooksScreen extends StatefulWidget {
   const NotebooksScreen({Key? key}) : super(key: key);
 
   @override
-  State<NotebooksScreen> createState() => _NotebooksScreenState();
+  State<NotebooksScreen> createState() {
+    print('🔥 NOTEBOOKS SCREEN: createState called'); // Force console output
+    return _NotebooksScreenState();
+  }
 }
 
 class _NotebooksScreenState extends State<NotebooksScreen> {
@@ -29,6 +32,7 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
   
   @override
   void didChangeDependencies() {
+    print('🔥 NOTEBOOKS SCREEN: didChangeDependencies called'); // Force console output
     super.didChangeDependencies();
     
     if (!_isInitialized) {
@@ -62,6 +66,7 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('🔥 NOTEBOOKS SCREEN: build called'); // Force console output
     // Use Consumer for reactive UI updates
     return Scaffold(
       key: _scaffoldKey, 
