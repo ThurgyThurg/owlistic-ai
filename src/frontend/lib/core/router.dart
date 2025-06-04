@@ -12,6 +12,7 @@ import 'package:owlistic/screens/user_profile_screen.dart';
 import 'package:owlistic/screens/settings_screen.dart';
 import 'package:owlistic/screens/ai_dashboard_screen.dart';
 import 'package:owlistic/screens/zettelkasten_screen.dart';
+import 'package:owlistic/screens/calendar_screen.dart';
 import 'package:owlistic/utils/logger.dart';
 
 class AppRouter {
@@ -144,6 +145,10 @@ class AppRouter {
         GoRoute(
           path: '/zettelkasten',
           builder: (context, state) => const ZettelkastenScreen(),
+        ),
+        GoRoute(
+          path: '/calendar',
+          builder: (context, state) => const CalendarScreen(),
         ),
       ],
     );

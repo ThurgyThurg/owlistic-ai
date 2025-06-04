@@ -35,6 +35,9 @@ dependencies:
   follow_the_leader: ^0.0.4+8
   ionicons: ^0.2.2
   uuid: ^4.0.0
+  table_calendar: ^3.0.9
+  url_launcher: ^6.1.14
+  flutter_riverpod: ^2.4.0
 
 dev_dependencies:
   flutter_test:

@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../viewmodel/theme_viewmodel.dart';
 import '../viewmodel/settings_viewmodel.dart';
 import '../widgets/app_bar_common.dart';
 import '../widgets/card_container.dart';
+import '../providers/calendar_provider.dart';
+import '../services/calendar_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: const AppBarCommon(title: 'Settings'),
       body: Padding(
@@ -54,6 +58,16 @@ class SettingsScreen extends StatelessWidget {
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
                       _showNotificationSettingsDialog(context);
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text('Google Calendar'),
+                    subtitle: const Text('Connect your Google Calendar'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      _showGoogleCalendarDialog(context);
                     },
                   ),
                 ],
@@ -313,6 +327,185 @@ class SettingsScreen extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGoogleCalendarDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Consumer(
+        builder: (context, ref, child) {
+          final isConnected = ref.watch(googleCalendarConnectedProvider);
+          final calendarService = ref.watch(calendarServiceProvider);
+          
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.calendar_today),
+                SizedBox(width: 8),
+                Text('Google Calendar'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isConnected) ...[
+                  const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 20),
+                      SizedBox(width: 8),
+                      Text('Connected to Google Calendar'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Your calendar events are synced with Google Calendar.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await calendarService.syncWithGoogle();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Calendar synced successfully')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.sync),
+                      label: const Text('Sync Now'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await calendarService.disconnectGoogleCalendar();
+                        ref.read(googleCalendarConnectedProvider.notifier).state = false;
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Disconnected from Google Calendar')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.link_off),
+                      label: const Text('Disconnect'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  const Text(
+                    'Connect your Google Calendar to:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• Sync your events across devices'),
+                  const Text('• Create events in Google Calendar'),
+                  const Text('• Get reminders and notifications'),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        try {
+                          final authUrl = await calendarService.getGoogleAuthUrl();
+                          if (await canLaunchUrl(Uri.parse(authUrl))) {
+                            await launchUrl(Uri.parse(authUrl));
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              // Show dialog to enter auth code
+                              _showAuthCodeDialog(context, ref);
+                            }
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.link),
+                      label: const Text('Connect Google Calendar'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAuthCodeDialog(BuildContext context, WidgetRef ref) {
+    final authCodeController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Authorization Code'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'After authorizing in your browser, copy the authorization code and paste it here:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: authCodeController,
+              decoration: const InputDecoration(
+                labelText: 'Authorization Code',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (authCodeController.text.isNotEmpty) {
+                try {
+                  final calendarService = ref.read(calendarServiceProvider);
+                  await calendarService.connectGoogleCalendar(authCodeController.text);
+                  ref.read(googleCalendarConnectedProvider.notifier).state = true;
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Successfully connected to Google Calendar')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Connect'),
           ),
         ],
       ),

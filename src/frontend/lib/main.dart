@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:owlistic/core/router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme.dart';
 import 'core/providers.dart';
@@ -34,10 +35,10 @@ void main() async {
     _initializeServices();
     logger.info('Core services initialized successfully');
     
-    runApp(OwlisticApp());
+    runApp(ProviderScope(child: OwlisticApp()));
   } catch (e) {
     logger.error('Failed to initialize application: $e');
-    runApp(ErrorApp(message: e.toString()));
+    runApp(ProviderScope(child: ErrorApp(message: e.toString())));
   }
 }
 
