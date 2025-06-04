@@ -106,14 +106,18 @@ abstract class BaseService {
     final uri = await createUri(path, queryParameters: queryParameters);
     _logger.debug('GET: $uri');
     print('🔥 ACTUAL GET URL: $uri'); // Force console output for debugging
+    print('🔥 AUTH TOKEN STATUS: ${_authToken == null ? "NULL" : "SET (${_authToken!.substring(0, 10)}...)"}'); // Debug auth token
     
     try {
       // Always use getAuthHeaders to get the current token
-      final response = await http.get(uri, headers: getAuthHeaders());
+      final headers = getAuthHeaders();
+      print('🔥 REQUEST HEADERS: ${headers.keys.join(", ")}'); // Debug headers
+      final response = await http.get(uri, headers: headers);
       _validateResponse(response, 'GET', uri.toString());
       return response;
     } catch (e) {
       _logger.error('HTTP GET error: $path', e);
+      print('🔥 HTTP ERROR: $e'); // Force console output
       rethrow;
     }
   }
