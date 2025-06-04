@@ -359,12 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 leading: const Icon(Icons.description),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => NoteEditorScreen(noteId: note.id),
-                    ),
-                  );
+                  context.go('/notes/${note.id}');
                 },
               ),
             );
@@ -620,12 +615,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   
                   if (note != null) {
                     // Navigate to the new note
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => NoteEditorScreen(noteId: note.id),
-                      ),
-                    );
+                    context.go('/notes/${note.id}');
                   }
                 } catch (e) {
                   _logger.error('Error creating note', e);

@@ -212,11 +212,28 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // Add AppBarCommon with ONLY theme switching functionality
-      appBar: AppBarCommon(
-        title: '', // Empty title as we have our own title field
-        showBackButton: false, // No back button in app bar
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          // Auto-save when navigating back
+          _noteEditorViewModel.saveTitleIfNeeded();
+        }
+      },
+      child: Scaffold(
+        // Add AppBarCommon with back button functionality
+        appBar: AppBarCommon(
+          title: '', // Empty title as we have our own title field
+          showBackButton: true, // Show back button in app bar
+          onBackPressed: () {
+            // Auto-save before navigating back
+            _noteEditorViewModel.saveTitleIfNeeded();
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/notes');
+            }
+          },
         actions: [
           if (_noteId != null && _noteId!.isNotEmpty)
             AIEnhancementButton(
@@ -235,8 +252,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           ),
           const ThemeSwitcher(),
         ],
+        ),
+        body: _buildBody(),
       ),
-      body: _buildBody(),
     );
   }
 

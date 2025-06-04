@@ -187,12 +187,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   void _navigateToNoteEditor(BuildContext context, Note note) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NoteEditorScreen(note: note),
-      ),
-    );
+    context.go('/notes/${note.id}');
   }
 
   @override

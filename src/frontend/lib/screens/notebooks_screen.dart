@@ -360,12 +360,7 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
   }
 
   void _navigateToNoteEditor(BuildContext context, Note note) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NoteEditorScreen(note: note),
-      ),
-    );
+    context.go('/notes/${note.id}');
   }
 
   void _showAddNoteDialog(BuildContext context, String notebookId) {

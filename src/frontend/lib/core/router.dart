@@ -23,6 +23,36 @@ class AppRouter {
     router = GoRouter(
       debugLogDiagnostics: true,
       initialLocation: '/',
+      errorBuilder: (context, state) => Scaffold(
+        appBar: AppBar(title: const Text('Navigation Error')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Navigation Error',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Unable to load the requested page',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Go to Home'),
+              ),
+            ],
+          ),
+        ),
+      ),
       routes: [
         GoRoute(
           path: '/',

@@ -192,12 +192,7 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   void _navigateToNoteEditor(Note note) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NoteEditorScreen(note: note),
-      ),
-    );
+    context.go('/notes/${note.id}');
   }
 
   void _showDeleteConfirmation(

@@ -8,6 +8,16 @@ import 'app_logo.dart';
 class SidebarDrawer extends StatelessWidget {
   const SidebarDrawer({Key? key}) : super(key: key);
 
+  void _navigateTo(BuildContext context, String route) {
+    // Close drawer first, then navigate after a brief delay to avoid conflicts
+    Navigator.pop(context);
+    Future.microtask(() {
+      if (context.mounted) {
+        context.go(route);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -37,67 +47,43 @@ class SidebarDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.home),
             title: const Text('Home'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/');
-            },
+            onTap: () => _navigateTo(context, '/'),
           ),
           ListTile(
             leading: const Icon(Icons.book),
             title: const Text('Notebooks'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/notebooks');
-            },
+            onTap: () => _navigateTo(context, '/notebooks'),
           ),
           ListTile(
             leading: const Icon(Icons.description),
             title: const Text('Notes'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/notes');
-            },
+            onTap: () => _navigateTo(context, '/notes'),
           ),
           ListTile(
             leading: const Icon(Icons.task),
             title: const Text('Tasks'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/tasks');
-            },
+            onTap: () => _navigateTo(context, '/tasks'),
           ),
           ListTile(
             leading: const Icon(Icons.smart_toy),
             title: const Text('AI Dashboard'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/ai-dashboard');
-            },
+            onTap: () => _navigateTo(context, '/ai-dashboard'),
           ),
           ListTile(
             leading: const Icon(Icons.account_tree),
             title: const Text('Knowledge Graph'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/zettelkasten');
-            },
+            onTap: () => _navigateTo(context, '/zettelkasten'),
           ),
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.delete),
             title: const Text('Trash'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/trash');
-            },
+            onTap: () => _navigateTo(context, '/trash'),
           ),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Settings'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).go('/settings');
-            },
+            onTap: () => _navigateTo(context, '/settings'),
           ),
           const Spacer(),
         ],
