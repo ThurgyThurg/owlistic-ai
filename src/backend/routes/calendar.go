@@ -135,15 +135,9 @@ func (cr *CalendarRoutes) handleOAuthCallback(c *gin.Context) {
 
 // revokeAccess revokes Google Calendar access
 func (cr *CalendarRoutes) revokeAccess(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -157,15 +151,9 @@ func (cr *CalendarRoutes) revokeAccess(c *gin.Context) {
 
 // getOAuthStatus checks the OAuth status for the user
 func (cr *CalendarRoutes) getOAuthStatus(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -184,15 +172,9 @@ func (cr *CalendarRoutes) getOAuthStatus(c *gin.Context) {
 
 // listCalendars retrieves the user's Google Calendars
 func (cr *CalendarRoutes) listCalendars(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -210,15 +192,9 @@ func (cr *CalendarRoutes) listCalendars(c *gin.Context) {
 
 // syncCalendar sets up sync for a specific calendar
 func (cr *CalendarRoutes) syncCalendar(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -258,15 +234,9 @@ func (cr *CalendarRoutes) syncCalendar(c *gin.Context) {
 
 // getSyncStatus gets the sync status for all calendars
 func (cr *CalendarRoutes) getSyncStatus(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -284,15 +254,9 @@ func (cr *CalendarRoutes) getSyncStatus(c *gin.Context) {
 
 // createEvent creates a new calendar event
 func (cr *CalendarRoutes) createEvent(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -313,15 +277,9 @@ func (cr *CalendarRoutes) createEvent(c *gin.Context) {
 
 // getEvents retrieves calendar events within a date range
 func (cr *CalendarRoutes) getEvents(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -330,7 +288,6 @@ func (cr *CalendarRoutes) getEvents(c *gin.Context) {
 	endTimeStr := c.Query("end_time")
 
 	var startTime, endTime time.Time
-	var err error
 
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
@@ -372,15 +329,9 @@ func (cr *CalendarRoutes) getEvents(c *gin.Context) {
 
 // getEvent retrieves a specific calendar event
 func (cr *CalendarRoutes) getEvent(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -402,15 +353,9 @@ func (cr *CalendarRoutes) getEvent(c *gin.Context) {
 
 // updateEvent updates an existing calendar event
 func (cr *CalendarRoutes) updateEvent(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -438,15 +383,9 @@ func (cr *CalendarRoutes) updateEvent(c *gin.Context) {
 
 // deleteEvent deletes a calendar event
 func (cr *CalendarRoutes) deleteEvent(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
@@ -467,15 +406,9 @@ func (cr *CalendarRoutes) deleteEvent(c *gin.Context) {
 
 // performSync manually triggers calendar sync
 func (cr *CalendarRoutes) performSync(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
