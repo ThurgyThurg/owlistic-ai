@@ -177,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+    print('🔥 HOME: Building section header for: $title'); // Force console output
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
