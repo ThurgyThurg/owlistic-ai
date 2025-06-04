@@ -98,7 +98,7 @@ class _EditorToolbarState extends State<EditorToolbar> {
   @override
   void dispose() {
     _urlFocusNode.dispose();
-    _urlController!.dispose();
+    _urlController?.dispose();
     _popoverFocusNode.dispose();
 
     super.dispose();
@@ -109,8 +109,8 @@ class _EditorToolbarState extends State<EditorToolbar> {
   /// multiple nodes are selected, no node is selected, or the selected
   /// node is not a standard text block.
   bool _isConvertibleNode() {
-    final selection = widget.composer.selection!;
-    if (selection.base.nodeId != selection.extent.nodeId) {
+    final selection = widget.composer.selection;
+    if (selection == null || selection.base.nodeId != selection.extent.nodeId) {
       return false;
     }
 
@@ -126,7 +126,11 @@ class _EditorToolbarState extends State<EditorToolbar> {
   ///
   /// Throws an exception if the currently selected node is not a text node.
   _TextType _getCurrentTextType() {
-    final selectedNode = widget.document.getNodeById(widget.composer.selection!.extent.nodeId);
+    final selection = widget.composer.selection;
+    if (selection == null) {
+      return _TextType.paragraph;
+    }
+    final selectedNode = widget.document.getNodeById(selection.extent.nodeId);
     if (selectedNode is ParagraphNode) {
       final type = selectedNode.getMetadataValue('blockType');
 
@@ -153,7 +157,11 @@ class _EditorToolbarState extends State<EditorToolbar> {
   /// Returns the text alignment of the currently selected text node.
   /// Throws an exception if the currently selected node is not a text node.
   TextAlign _getCurrentTextAlignment() {
-    final selectedNode = widget.document.getNodeById(widget.composer.selection!.extent.nodeId);
+    final selection = widget.composer.selection;
+    if (selection == null) {
+      return TextAlign.left;
+    }
+    final selectedNode = widget.document.getNodeById(selection.extent.nodeId);
     if (selectedNode is ParagraphNode) {
       final align = selectedNode.getMetadataValue('textAlign');
       switch (align) {
@@ -176,8 +184,8 @@ class _EditorToolbarState extends State<EditorToolbar> {
   /// Returns true if a single text node is selected and that text node
   /// is capable of respecting alignment, returns false otherwise.
   bool _isTextAlignable() {
-    final selection = widget.composer.selection!;
-    if (selection.base.nodeId != selection.extent.nodeId) {
+    final selection = widget.composer.selection;
+    if (selection == null || selection.base.nodeId != selection.extent.nodeId) {
       return false;
     }
 
@@ -237,6 +245,11 @@ class _EditorToolbarState extends State<EditorToolbar> {
   /// For example: convert a paragraph to a blockquote, or a header
   /// to a list item.
   void _convertTextToNewType(_TextType? newType) {
+    final selection = widget.composer.selection;
+    if (selection == null || widget.editor == null) {
+      return;
+    }
+    
     final existingTextType = _getCurrentTextType();
 
     if (existingTextType == newType) {
@@ -247,14 +260,14 @@ class _EditorToolbarState extends State<EditorToolbar> {
     if (_isListItem(existingTextType) && _isListItem(newType)) {
       widget.editor!.execute([
         ChangeListItemTypeRequest(
-          nodeId: widget.composer.selection!.extent.nodeId,
+          nodeId: selection.extent.nodeId,
           newType: newType == _TextType.orderedListItem ? ListItemType.ordered : ListItemType.unordered,
         ),
       ]);
     } else if (_isListItem(existingTextType) && !_isListItem(newType)) {
       widget.editor!.execute([
         ConvertListItemToParagraphRequest(
-          nodeId: widget.composer.selection!.extent.nodeId,
+          nodeId: selection.extent.nodeId,
           paragraphMetadata: {
             'blockType': _getBlockTypeAttribution(newType),
           },
@@ -265,27 +278,27 @@ class _EditorToolbarState extends State<EditorToolbar> {
         // TODO: this is a workaround as no ConvertTaskToListItemRequest exists
         widget.editor!.execute([
           ConvertTaskToParagraphRequest(
-            nodeId: widget.composer.selection!.extent.nodeId,
+            nodeId: selection.extent.nodeId,
           ),
         ]);
       }
       widget.editor!.execute([
         ConvertParagraphToListItemRequest(
-          nodeId: widget.composer.selection!.extent.nodeId,
+          nodeId: selection.extent.nodeId,
           type: newType == _TextType.orderedListItem ? ListItemType.ordered : ListItemType.unordered,
         ),
       ]);
     } else if (!_isTaskItem(existingTextType) && _isTaskItem(newType)) {
       widget.editor!.execute([
         ConvertParagraphToTaskRequest(
-          nodeId: widget.composer.selection!.extent.nodeId,
+          nodeId: selection.extent.nodeId,
           isComplete: false,
         ),
       ]);
     } else if (_isTaskItem(existingTextType) && !_isTaskItem(newType)) {
       widget.editor!.execute([
         ConvertTaskToParagraphRequest(
-          nodeId: widget.composer.selection!.extent.nodeId,
+          nodeId: selection.extent.nodeId,
           paragraphMetadata: {
             'blockType': _getBlockTypeAttribution(newType),
           }
@@ -295,7 +308,7 @@ class _EditorToolbarState extends State<EditorToolbar> {
       // Apply a new block type to an existing paragraph node.
       widget.editor!.execute([
         ChangeParagraphBlockTypeRequest(
-          nodeId: widget.composer.selection!.extent.nodeId,
+          nodeId: selection.extent.nodeId,
           blockType: _getBlockTypeAttribution(newType),
         ),
       ]);
@@ -334,9 +347,14 @@ class _EditorToolbarState extends State<EditorToolbar> {
 
   /// Toggles bold styling for the current selected text.
   void _toggleBold() {
+    final selection = widget.composer.selection;
+    if (selection == null || widget.editor == null) {
+      return;
+    }
+    
     widget.editor!.execute([
       ToggleTextAttributionsRequest(
-        documentRange: widget.composer.selection!,
+        documentRange: selection,
         attributions: {boldAttribution},
       ),
     ]);
@@ -344,9 +362,14 @@ class _EditorToolbarState extends State<EditorToolbar> {
 
   /// Toggles italic styling for the current selected text.
   void _toggleItalics() {
+    final selection = widget.composer.selection;
+    if (selection == null || widget.editor == null) {
+      return;
+    }
+    
     widget.editor!.execute([
       ToggleTextAttributionsRequest(
-        documentRange: widget.composer.selection!,
+        documentRange: selection,
         attributions: {italicsAttribution},
       ),
     ]);
@@ -354,9 +377,14 @@ class _EditorToolbarState extends State<EditorToolbar> {
 
   /// Toggles strikethrough styling for the current selected text.
   void _toggleUnderline() {
+    final selection = widget.composer.selection;
+    if (selection == null || widget.editor == null) {
+      return;
+    }
+    
     widget.editor!.execute([
       ToggleTextAttributionsRequest(
-        documentRange: widget.composer.selection!,
+        documentRange: selection,
         attributions: {underlineAttribution},
       ),
     ]);
@@ -364,9 +392,14 @@ class _EditorToolbarState extends State<EditorToolbar> {
 
   /// Toggles strikethrough styling for the current selected text.
   void _toggleStrikethrough() {
+    final selection = widget.composer.selection;
+    if (selection == null || widget.editor == null) {
+      return;
+    }
+    
     widget.editor!.execute([
       ToggleTextAttributionsRequest(
-        documentRange: widget.composer.selection!,
+        documentRange: selection,
         attributions: {strikethroughAttribution},
       ),
     ]);
@@ -524,13 +557,14 @@ class _EditorToolbarState extends State<EditorToolbar> {
   /// Changes the alignment of the current selected text node
   /// to reflect [newAlignment].
   void _changeAlignment(TextAlign? newAlignment) {
-    if (newAlignment == null) {
+    final selection = widget.composer.selection;
+    if (newAlignment == null || selection == null || widget.editor == null) {
       return;
     }
 
     widget.editor!.execute([
       ChangeParagraphAlignmentRequest(
-        nodeId: widget.composer.selection!.extent.nodeId,
+        nodeId: selection.extent.nodeId,
         alignment: newAlignment,
       ),
     ]);

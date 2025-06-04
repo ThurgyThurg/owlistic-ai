@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Constants for ChromaDB collection
@@ -211,7 +212,7 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 
 	// Save AI enhancements to database
 	enhancedNote := models.AIEnhancedNote{
-		Note:             note,
+		NoteID:           note.ID,
 		Summary:          summary,
 		AITags:           pq.StringArray(aiTags),
 		ActionSteps:      pq.StringArray(actionSteps),
@@ -232,9 +233,16 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 		}
 	}
 
-	// Save enhanced note data
-	if err := ai.db.Save(&enhancedNote).Error; err != nil {
+	// Save enhanced note data (use Clauses for upsert behavior)
+	if err := ai.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "note_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"summary", "ai_tags", "action_steps", "learning_items", 
+			"processing_status", "last_processed_at", "ai_metadata", "updated_at",
+		}),
+	}).Create(&enhancedNote).Error; err != nil {
 		log.Printf("Failed to save AI enhancements: %v", err)
+		return fmt.Errorf("failed to save AI enhancements: %w", err)
 	}
 
 	// Add to ChromaDB for vector search
@@ -397,7 +405,7 @@ func (ai *AIService) SearchNotesByEmbedding(ctx context.Context, query string, u
 			}
 			
 			var enhancedNote models.AIEnhancedNote
-			if err := ai.db.Where("id = ?", noteID).First(&enhancedNote).Error; err == nil {
+			if err := ai.db.Where("note_id = ?", noteID).First(&enhancedNote).Error; err == nil {
 				// Add relevance score from distance
 				if len(results.Distances) > 0 && len(results.Distances[0]) > i {
 					distance := results.Distances[0][i]
@@ -453,7 +461,7 @@ func (ai *AIService) RefreshChromaCollection(ctx context.Context) error {
 		for _, note := range batch {
 			// Get enhanced data if exists
 			var enhanced models.AIEnhancedNote
-			ai.db.Where("id = ?", note.ID).First(&enhanced)
+			ai.db.Where("note_id = ?", note.ID).First(&enhanced)
 			
 			// Prepare document
 			var docBuilder strings.Builder

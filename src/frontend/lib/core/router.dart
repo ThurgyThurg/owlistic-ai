@@ -60,7 +60,15 @@ class AppRouter {
         GoRoute(
           path: '/notebooks/:id',
           builder: (context, state) {
-            final String notebookId = state.pathParameters['id']!;
+            final String? notebookId = state.pathParameters['id'];
+            if (notebookId == null) {
+              return Scaffold(
+                appBar: AppBar(title: const Text('Error')),
+                body: const Center(
+                  child: Text('Invalid notebook ID'),
+                ),
+              );
+            }
             return NotebookDetailScreen(notebookId: notebookId);
           },
         ),
@@ -71,7 +79,15 @@ class AppRouter {
         GoRoute(
           path: '/notes/:id',
           builder: (context, state) {
-            final String noteId = state.pathParameters['id']!;
+            final String? noteId = state.pathParameters['id'];
+            if (noteId == null) {
+              return Scaffold(
+                appBar: AppBar(title: const Text('Error')),
+                body: const Center(
+                  child: Text('Invalid note ID'),
+                ),
+              );
+            }
             return NoteEditorScreen(noteId: noteId);
           },
         ),

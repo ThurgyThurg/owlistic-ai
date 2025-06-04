@@ -180,7 +180,7 @@ func (cr *ChromaRoutes) embedNote(c *gin.Context) {
 	
 	// Get enhanced note data if exists
 	var enhanced models.AIEnhancedNote
-	cr.db.Where("id = ?", noteID).First(&enhanced)
+	cr.db.Where("note_id = ?", noteID).First(&enhanced)
 	
 	// Add to ChromaDB
 	if err := cr.aiService.AddNoteToChroma(c.Request.Context(), &note, &enhanced); err != nil {

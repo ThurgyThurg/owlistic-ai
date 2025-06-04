@@ -102,16 +102,19 @@ func (e *Embeddings) Scan(value interface{}) error {
 
 // AIEnhancedNote extends the existing Note model with AI capabilities
 type AIEnhancedNote struct {
-	Note                    // Embed existing Note struct
-	Summary        string   `json:"summary,omitempty"`
+	NoteID         uuid.UUID      `gorm:"type:uuid;primaryKey" json:"note_id"`
+	Note           Note           `gorm:"foreignKey:NoteID;constraint:OnDelete:CASCADE" json:"note"`
+	Summary        string         `json:"summary,omitempty"`
 	AITags         pq.StringArray `gorm:"type:text[]" json:"ai_tags,omitempty"`
 	ActionSteps    pq.StringArray `gorm:"type:text[]" json:"action_steps,omitempty"`
 	LearningItems  pq.StringArray `gorm:"type:text[]" json:"learning_items,omitempty"`
-	Embeddings     Embeddings `gorm:"type:jsonb" json:"embeddings,omitempty"`
-	RelatedNoteIDs []uuid.UUID `gorm:"type:text[]" json:"related_note_ids,omitempty"`
-	AIMetadata     AIMetadata `gorm:"type:jsonb;default:'{}'::jsonb" json:"ai_metadata,omitempty"`
-	ProcessingStatus string `gorm:"default:'pending'" json:"processing_status"` // pending, processing, completed, failed
-	LastProcessedAt *time.Time `json:"last_processed_at,omitempty"`
+	Embeddings     Embeddings     `gorm:"type:jsonb" json:"embeddings,omitempty"`
+	RelatedNoteIDs []uuid.UUID    `gorm:"type:text[]" json:"related_note_ids,omitempty"`
+	AIMetadata     AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"ai_metadata,omitempty"`
+	ProcessingStatus string       `gorm:"default:'pending'" json:"processing_status"` // pending, processing, completed, failed
+	LastProcessedAt *time.Time    `json:"last_processed_at,omitempty"`
+	CreatedAt      time.Time      `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"not null;default:now()" json:"updated_at"`
 }
 
 // AIAgent represents different types of AI agents

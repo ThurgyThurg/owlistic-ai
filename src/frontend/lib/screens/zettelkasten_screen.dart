@@ -311,7 +311,7 @@ class _ZettelkastenScreenState extends State<ZettelkastenScreen> {
               // Main graph area
               Expanded(
                 child: ZettelkastenGraphWidget(
-                  graph: provider.filteredGraph ?? provider.graph!,
+                  graph: provider.filteredGraph ?? provider.graph ?? ZettelGraph(nodes: [], edges: [], tags: []),
                   selectedNode: _selectedNode,
                   onNodeSelected: _onNodeSelected,
                   onNodePositionChanged: (nodeId, position) {

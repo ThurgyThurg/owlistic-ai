@@ -128,7 +128,7 @@ func (ar *AIRoutes) getEnhancedNote(c *gin.Context) {
 	}
 
 	var aiNote models.AIEnhancedNote
-	if err := ar.db.Where("id = ? AND user_id = ?", noteID, userID).First(&aiNote).Error; err != nil {
+	if err := ar.db.Preload("Note").Where("note_id = ?", noteID).Joins("JOIN notes ON notes.id = ai_enhanced_notes.note_id").Where("notes.user_id = ?", userID).First(&aiNote).Error; err != nil {
 		// Return regular note if AI enhancement doesn't exist
 		var note models.Note
 		if err := ar.db.Where("id = ? AND user_id = ?", noteID, userID).First(&note).Error; err != nil {
