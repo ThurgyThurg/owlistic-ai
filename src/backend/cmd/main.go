@@ -134,13 +134,13 @@ func main() {
 		log.Println("Calendar routes registered successfully")
 	}
 
-	// Register Zettelkasten routes on protected group
+	// Register Zettelkasten routes on public group for single-user mode
 	zettelRoutes, err := routes.NewZettelkastenRoutes(db.DB)
 	if err != nil {
 		log.Printf("Failed to initialize Zettelkasten routes: %v", err)
 		log.Printf("Zettelkasten functionality will not be available")
 	} else {
-		zettelRoutes.RegisterRoutes(protectedGroup)
+		zettelRoutes.RegisterRoutes(publicGroup)
 		log.Println("Zettelkasten routes registered successfully")
 	}
 
