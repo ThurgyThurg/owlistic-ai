@@ -12,7 +12,7 @@ class CalendarService extends BaseService {
       final endOfMonth = DateTime(month.year, month.month + 1, 0);
       
       final response = await authenticatedGet(
-        '/api/calendar/events',
+        '/api/v1/calendar/events',
         queryParameters: {
           'start': startOfMonth.toIso8601String(),
           'end': endOfMonth.toIso8601String(),
@@ -38,7 +38,7 @@ class CalendarService extends BaseService {
   }) async {
     try {
       final response = await authenticatedPost(
-        '/api/calendar/events',
+        '/api/v1/calendar/events',
         {
           'title': title,
           'description': description,
@@ -60,7 +60,7 @@ class CalendarService extends BaseService {
   Future<CalendarEvent> updateEvent(CalendarEvent event) async {
     try {
       final response = await authenticatedPut(
-        '/api/calendar/events/${event.id}',
+        '/api/v1/calendar/events/${event.id}',
         {
           'title': event.title,
           'description': event.description,
@@ -81,7 +81,7 @@ class CalendarService extends BaseService {
 
   Future<void> deleteEvent(String eventId) async {
     try {
-      final response = await authenticatedDelete('/api/calendar/events/$eventId');
+      final response = await authenticatedDelete('/api/v1/calendar/events/$eventId');
 
       if (response.statusCode != 200) {
         throw Exception('Failed to delete event');
@@ -94,7 +94,7 @@ class CalendarService extends BaseService {
 
   Future<String> getGoogleAuthUrl() async {
     try {
-      final response = await authenticatedGet('/api/calendar/oauth/authorize');
+      final response = await authenticatedGet('/api/v1/calendar/oauth/authorize');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -123,7 +123,7 @@ class CalendarService extends BaseService {
 
   Future<void> disconnectGoogleCalendar() async {
     try {
-      final response = await authenticatedDelete('/api/calendar/oauth/revoke');
+      final response = await authenticatedDelete('/api/v1/calendar/oauth/revoke');
 
       if (response.statusCode != 200) {
         throw Exception('Failed to disconnect Google Calendar');
@@ -136,7 +136,7 @@ class CalendarService extends BaseService {
 
   Future<void> syncWithGoogle() async {
     try {
-      final response = await authenticatedPost('/api/calendar/sync', {});
+      final response = await authenticatedPost('/api/v1/calendar/sync', {});
 
       if (response.statusCode != 200) {
         throw Exception('Failed to sync with Google Calendar');
@@ -149,7 +149,7 @@ class CalendarService extends BaseService {
 
   Future<bool> isGoogleCalendarConnected() async {
     try {
-      final response = await authenticatedGet('/api/calendar/oauth/status');
+      final response = await authenticatedGet('/api/v1/calendar/oauth/status');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -165,7 +165,7 @@ class CalendarService extends BaseService {
 
   Future<Map<String, dynamic>> getOAuthConfig() async {
     try {
-      final response = await get('/api/calendar/oauth/config');
+      final response = await get('/api/v1/calendar/oauth/config');
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
