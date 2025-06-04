@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as Provider;
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -29,7 +29,7 @@ class SettingsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.palette),
                     title: const Text('Appearance'),
                     subtitle: const Text('Customize app theme'),
-                    trailing: Consumer<ThemeViewModel>(
+                    trailing: Provider.Consumer<ThemeViewModel>(
                       builder: (context, themeViewModel, child) {
                         return Switch(
                           value: themeViewModel.isDarkMode,
@@ -184,9 +184,9 @@ class SettingsScreen extends ConsumerWidget {
   void _showNotificationSettingsDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => ChangeNotifierProvider(
+      builder: (context) => Provider.ChangeNotifierProvider(
         create: (_) => SettingsViewModel(),
-        child: Consumer<SettingsViewModel>(
+        child: Provider.Consumer<SettingsViewModel>(
           builder: (context, viewModel, child) {
             return AlertDialog(
               title: const Row(
@@ -336,7 +336,7 @@ class SettingsScreen extends ConsumerWidget {
   void _showGoogleCalendarDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => Consumer(
+      builder: (context) => RiverpodConsumer(
         builder: (context, ref, child) {
           final isConnected = ref.watch(googleCalendarConnectedProvider);
           final calendarService = ref.watch(calendarServiceProvider);

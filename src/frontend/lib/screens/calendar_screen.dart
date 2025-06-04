@@ -34,7 +34,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final calendarState = ref.watch(calendarProvider);
     
     return Scaffold(
-      appBar: buildAppBar(context, "Calendar"),
+      appBar: const AppBarCommon(title: "Calendar"),
       drawer: const SidebarDrawer(),
       body: Column(
         children: [

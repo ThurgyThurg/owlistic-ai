@@ -48,6 +48,63 @@ func RunMigrations(db *gorm.DB) error {
 		return err
 	}
 
+	// Run additional manual migrations for constraints
+	if err := runManualMigrations(db); err != nil {
+		log.Printf("Manual migrations failed: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// runManualMigrations runs manual SQL migrations for constraints and indexes
+func runManualMigrations(db *gorm.DB) error {
+	log.Println("Running manual migrations for constraints...")
+
+	// Add unique constraint on note_id in ai_enhanced_notes table
+	// This ensures one-to-one relationship between notes and AI enhancements
+	if err := db.Exec(`
+		DO $$ 
+		BEGIN 
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint 
+				WHERE conname = 'ai_enhanced_notes_note_id_unique'
+			) THEN
+				ALTER TABLE ai_enhanced_notes 
+				ADD CONSTRAINT ai_enhanced_notes_note_id_unique 
+				UNIQUE (note_id);
+			END IF;
+		END $$;
+	`).Error; err != nil {
+		log.Printf("Failed to add unique constraint on ai_enhanced_notes.note_id: %v", err)
+		// Don't fail the migration if constraint already exists
+	}
+
+	// Add index on note_id for better query performance
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_ai_enhanced_notes_note_id 
+		ON ai_enhanced_notes(note_id);
+	`).Error; err != nil {
+		log.Printf("Failed to add index on ai_enhanced_notes.note_id: %v", err)
+	}
+
+	// Add index on processing_status for finding pending notes
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_ai_enhanced_notes_processing_status 
+		ON ai_enhanced_notes(processing_status);
+	`).Error; err != nil {
+		log.Printf("Failed to add index on ai_enhanced_notes.processing_status: %v", err)
+	}
+
+	// Add composite index for user queries
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_ai_enhanced_notes_user_status 
+		ON ai_enhanced_notes(note_id, processing_status);
+	`).Error; err != nil {
+		log.Printf("Failed to add composite index on ai_enhanced_notes: %v", err)
+	}
+
+	log.Println("Manual migrations completed")
 	return nil
 }
 

@@ -102,7 +102,7 @@ func (e *Embeddings) Scan(value interface{}) error {
 
 // AIEnhancedNote extends the existing Note model with AI capabilities
 type AIEnhancedNote struct {
-	NoteID         uuid.UUID      `gorm:"type:uuid;primaryKey" json:"note_id"`
+	NoteID         uuid.UUID      `gorm:"type:uuid;primaryKey;uniqueIndex:ai_enhanced_notes_note_id_unique" json:"note_id"`
 	Note           Note           `gorm:"foreignKey:NoteID;constraint:OnDelete:CASCADE" json:"note"`
 	Summary        string         `json:"summary,omitempty"`
 	AITags         pq.StringArray `gorm:"type:text[]" json:"ai_tags,omitempty"`

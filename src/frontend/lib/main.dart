@@ -103,7 +103,7 @@ class _OwlisticAppWithProvidersState extends State<OwlisticAppWithProviders> {
   @override
   Widget build(BuildContext context) {
     // Listen to theme changes
-    return Consumer<ThemeViewModel>(
+    return Provider.Consumer<ThemeViewModel>(
       builder: (context, themeViewModel, _) {
         return MaterialApp.router(
           title: 'Owlistic',
