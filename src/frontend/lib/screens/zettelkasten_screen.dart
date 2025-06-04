@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:owlistic/providers/zettelkasten_provider.dart';
 import 'package:owlistic/widgets/app_bar_common.dart';
+import 'package:owlistic/widgets/app_drawer.dart';
 import 'package:owlistic/widgets/zettelkasten_graph_widget.dart';
 import 'package:owlistic/widgets/zettelkasten_side_panel.dart';
 import 'package:owlistic/models/zettelkasten.dart';
@@ -232,6 +233,7 @@ class _ZettelkastenScreenState extends State<ZettelkastenScreen> {
           ),
         ],
       ),
+      drawer: const SidebarDrawer(),
       body: Consumer<ZettelkastenProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {

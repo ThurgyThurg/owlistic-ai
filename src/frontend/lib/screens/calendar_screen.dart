@@ -35,7 +35,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     
     return Scaffold(
       appBar: buildAppBar(context, "Calendar"),
-      drawer: const AppDrawer(),
+      drawer: const SidebarDrawer(),
       body: Column(
         children: [
           // View toggle buttons

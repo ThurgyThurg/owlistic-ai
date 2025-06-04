@@ -5,6 +5,7 @@ import '../models/ai_project.dart';
 import '../models/ai_agent.dart';
 import '../services/ai_service.dart';
 import '../widgets/app_bar_common.dart';
+import '../widgets/app_drawer.dart';
 import '../utils/logger.dart';
 
 class AIDashboardScreen extends StatefulWidget {
@@ -186,6 +187,7 @@ class _AIDashboardScreenState extends State<AIDashboardScreen>
           ),
         ],
       ),
+      drawer: const SidebarDrawer(),
       body: Column(
         children: [
           TabBar(
