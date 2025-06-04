@@ -6,6 +6,7 @@ import '../utils/logger.dart';
 class AIEnhancementButton extends StatefulWidget {
   final String noteId;
   final VoidCallback? onProcessingComplete;
+  final VoidCallback? onBeforeProcessing;
   final Widget? icon;
   final String? tooltip;
 
@@ -13,6 +14,7 @@ class AIEnhancementButton extends StatefulWidget {
     Key? key,
     required this.noteId,
     this.onProcessingComplete,
+    this.onBeforeProcessing,
     this.icon,
     this.tooltip,
   }) : super(key: key);
@@ -52,6 +54,12 @@ class _AIEnhancementButtonState extends State<AIEnhancementButton>
 
   Future<void> _processWithAI() async {
     if (_isProcessing) return;
+
+    // Call onBeforeProcessing to save any pending changes
+    widget.onBeforeProcessing?.call();
+    
+    // Add a small delay to ensure save operations complete
+    await Future.delayed(const Duration(milliseconds: 100));
 
     setState(() {
       _isProcessing = true;

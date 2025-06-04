@@ -238,6 +238,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           if (_noteId != null && _noteId!.isNotEmpty)
             AIEnhancementButton(
               noteId: _noteId!,
+              onBeforeProcessing: () {
+                // Save any pending changes before AI processing
+                _noteEditorViewModel.commitPendingChanges();
+              },
               onProcessingComplete: () {
                 // Refresh the note content after AI processing
                 _noteEditorViewModel.fetchBlocksForNote(_noteId!, refresh: true);

@@ -71,9 +71,15 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
   // DateTime _lastEdit for debouncing
   DateTime _lastEdit = DateTime.now();
   String? _currentEditingBlockId;
+  Timer? _saveTimer;
+  Timer? _autoSaveTimer;
   
   // Flag to prevent recursive document updates
   bool _updatingDocument = false;
+  
+  // Saving state indicator
+  bool _isSaving = false;
+  bool get isSaving => _isSaving;
   
   // Constructor with dependency injection
   NoteEditorProvider({
@@ -114,6 +120,14 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
       if (connected && _isActive) {
         // Resubscribe to events when connection is established
         _subscribeToEvents();
+      }
+    });
+    
+    // Setup auto-save timer (every 30 seconds)
+    _autoSaveTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_isActive && _documentBuilder.uncommittedNodes.isNotEmpty) {
+        _logger.debug('Auto-saving uncommitted changes');
+        _commitUncommittedNodes();
       }
     });
     
@@ -521,9 +535,6 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
 
   // Track which block is being edited and schedule updates
   void _handleDocumentChange() {
-    // TODO: improve change listener using a similar approach
-    // to _findEditedTextNodes in markdown_inline_upstream_plugin.dart
-
     // Get the node that's currently being edited
     final selection = _documentBuilder.composer.selection;
     if (selection == null) return;
@@ -542,6 +553,12 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
     // Mark the block as modified by the user
     _documentBuilder.markBlockAsModified(blockId);
     _documentBuilder.markNodeAsUncommitted(nodeId);
+    
+    // Cancel previous timer and start a new one for debounced saving
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 2), () {
+      _commitUncommittedNodes();
+    });
   }
 
   // Handle focus change
@@ -1088,9 +1105,11 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
   void dispose() {
     _logger.info('Disposing NoteEditorProvider');
     
-    // Cancel subscriptions
+    // Cancel subscriptions and timers
     _resetSubscription?.cancel();
     _connectionSubscription?.cancel();
+    _saveTimer?.cancel();
+    _autoSaveTimer?.cancel();
     
     // Commit any pending changes
     if (_isActive) {
@@ -1281,8 +1300,18 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
   }
   
   // Try to create blocks for any uncommitted nodes
+  // Public method to commit pending changes (for AI processing and other external triggers)
+  void commitPendingChanges() {
+    // Cancel any pending save timer and commit immediately
+    _saveTimer?.cancel();
+    _commitUncommittedNodes();
+  }
+  
   void _commitUncommittedNodes() async {
     if (_documentBuilder.uncommittedNodes.isEmpty) return;
+    
+    _isSaving = true;
+    notifyListeners();
     
     _logger.info('Creating blocks for ${_documentBuilder.uncommittedNodes.length} uncommitted nodes');
     
@@ -1292,6 +1321,9 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
     for (final nodeId in nodeIds) {
       _commitNodeChange(nodeId);
     }
+    
+    _isSaving = false;
+    notifyListeners();
   }
 
   @override
