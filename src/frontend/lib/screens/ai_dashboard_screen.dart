@@ -176,6 +176,10 @@ class _AIDashboardScreenState extends State<AIDashboardScreen>
     return Scaffold(
       appBar: AppBarCommon(
         title: 'AI Dashboard',
+        onBackPressed: () {
+          // Explicitly navigate to home when back is pressed
+          context.go('/');
+        },
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -578,40 +582,382 @@ class _AIDashboardScreenState extends State<AIDashboardScreen>
   Widget _buildAgentCard(AIAgent agent) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      child: ExpansionTile(
         leading: CircleAvatar(
           backgroundColor: agent.isCompleted 
               ? Colors.green 
               : agent.isRunning 
                   ? Colors.orange 
-                  : Colors.grey,
+                  : agent.isFailed
+                      ? Colors.red
+                      : Colors.grey,
           child: Icon(
             agent.isCompleted 
                 ? Icons.check 
                 : agent.isRunning 
                     ? Icons.hourglass_empty 
-                    : Icons.error,
+                    : agent.isFailed
+                        ? Icons.error
+                        : Icons.pending,
             color: Colors.white,
           ),
         ),
-        title: Text(agent.agentType.replaceAll('_', ' ').toUpperCase()),
+        title: Text(
+          agent.agentType.replaceAll('_', ' ').toUpperCase(),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Status: ${agent.status}'),
-            if (agent.totalStepsCount > 0)
-              Text('Progress: ${agent.completedStepsCount}/${agent.totalStepsCount} steps'),
+            Row(
+              children: [
+                Icon(
+                  Icons.circle,
+                  size: 8,
+                  color: agent.isCompleted 
+                      ? Colors.green 
+                      : agent.isRunning 
+                          ? Colors.orange 
+                          : agent.isFailed
+                              ? Colors.red
+                              : Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Text('${agent.status.toUpperCase()}'),
+                const Spacer(),
+                Text(
+                  agent.createdAt.toLocal().toString().split(' ')[0],
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+            if (agent.totalStepsCount > 0) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: agent.progressPercentage / 100,
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        agent.isCompleted 
+                            ? Colors.green 
+                            : agent.isRunning 
+                                ? Colors.orange 
+                                : agent.isFailed
+                                    ? Colors.red
+                                    : Colors.grey,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${agent.completedStepsCount}/${agent.totalStepsCount} steps',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
+            if (agent.executionTime != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.timer, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Execution time: ${_formatDuration(agent.executionTime!)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
-        trailing: Text(
-          agent.createdAt.toLocal().toString().split(' ')[0],
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        onTap: () {
-          // TODO: Navigate to agent details
-        },
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Agent Overview
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Agent Details',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildDetailRow('Agent ID', agent.id),
+                          _buildDetailRow('Type', agent.agentType),
+                          _buildDetailRow('Status', agent.status.toUpperCase()),
+                          if (agent.startedAt != null)
+                            _buildDetailRow('Started', agent.startedAt!.toLocal().toString()),
+                          if (agent.completedAt != null)
+                            _buildDetailRow('Completed', agent.completedAt!.toLocal().toString()),
+                          if (agent.error != null)
+                            _buildDetailRow('Error', agent.error!, isError: true),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                
+                // Input/Output Data
+                if (agent.inputData != null || agent.outputData != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Data',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (agent.inputData != null)
+                    _buildDataSection('Input Data', agent.inputData!),
+                  if (agent.outputData != null)
+                    _buildDataSection('Output Data', agent.outputData!),
+                ],
+                
+                // Steps
+                if (agent.steps != null && agent.steps!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Execution Steps',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...agent.steps!.map((step) => _buildStepCard(step)),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isError = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: isError ? Colors.red : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataSection(String title, Map<String, dynamic> data) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            _formatJson(data),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontFamily: 'monospace',
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildStepCard(AIAgentStep step) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: step.isCompleted 
+                        ? Colors.green 
+                        : step.isRunning 
+                            ? Colors.orange 
+                            : step.isFailed
+                                ? Colors.red
+                                : Colors.grey,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${step.stepNumber}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        step.name,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (step.description != null)
+                        Text(
+                          step.description!,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: step.isCompleted 
+                        ? Colors.green.withOpacity(0.1) 
+                        : step.isRunning 
+                            ? Colors.orange.withOpacity(0.1) 
+                            : step.isFailed
+                                ? Colors.red.withOpacity(0.1)
+                                : Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    step.status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: step.isCompleted 
+                          ? Colors.green 
+                          : step.isRunning 
+                              ? Colors.orange 
+                              : step.isFailed
+                                  ? Colors.red
+                                  : Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (step.executionTime != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const SizedBox(width: 36),
+                  Icon(Icons.timer, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDuration(step.executionTime!),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (step.error != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error, size: 16, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        step.error!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    if (duration.inHours > 0) {
+      return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m ${duration.inSeconds.remainder(60)}s';
+    } else if (duration.inMinutes > 0) {
+      return '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
+    } else {
+      return '${duration.inSeconds}s';
+    }
+  }
+
+  String _formatJson(Map<String, dynamic> json) {
+    try {
+      return json.entries
+          .map((e) => '${e.key}: ${e.value}')
+          .join('\n');
+    } catch (e) {
+      return json.toString();
+    }
   }
 
   Widget _buildProjectsTab() {

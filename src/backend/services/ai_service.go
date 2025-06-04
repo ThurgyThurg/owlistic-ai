@@ -533,7 +533,7 @@ func (ai *AIService) GetChromaCollectionStats(ctx context.Context) (map[string]i
 func (ai *AIService) extractNoteContent(note *models.Note) string {
 	// Get blocks for this note
 	var blocks []models.Block
-	ai.db.Where("note_id = ?", note.ID).Order("order_index").Find(&blocks)
+	ai.db.Where("note_id = ?", note.ID).Order("\"order\"").Find(&blocks)
 	
 	var contentBuilder strings.Builder
 	for _, block := range blocks {

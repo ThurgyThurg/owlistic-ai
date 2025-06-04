@@ -39,9 +39,14 @@ class AppBarCommon extends StatelessWidget implements PreferredSizeWidget {
         leadingWidget = IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: onBackPressed ?? () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
+            try {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            } catch (e) {
+              // Fallback to home if navigation fails
               context.go('/');
             }
           },
