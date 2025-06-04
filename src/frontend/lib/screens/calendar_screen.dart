@@ -303,7 +303,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ref.read(calendarProvider.notifier).createEvent(
                   title: titleController.text,
                   description: descriptionController.text,
-                  date: eventDate,
+                  startTime: eventDate,
+                  endTime: eventDate.add(const Duration(hours: 1)), // Default 1-hour event
                 );
                 Navigator.of(context).pop();
               }
@@ -399,7 +400,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   event.copyWith(
                     title: titleController.text,
                     description: descriptionController.text,
-                    date: eventDate,
+                    startTime: eventDate,
+                    endTime: eventDate.add(const Duration(hours: 1)), // Default 1-hour event
                   ),
                 );
                 Navigator.of(context).pop();

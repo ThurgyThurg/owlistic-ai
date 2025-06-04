@@ -31,16 +31,30 @@ class CalendarNotifier extends StateNotifier<AsyncValue<List<CalendarEvent>>> {
   Future<void> createEvent({
     required String title,
     required String description,
-    required DateTime date,
+    required DateTime startTime,
+    required DateTime endTime,
+    bool allDay = false,
+    String? location,
+    String? timeZone,
+    String? calendarId,
+    String? noteId,
+    String? taskId,
   }) async {
     try {
       await _service.createEvent(
         title: title,
         description: description,
-        date: date,
+        startTime: startTime,
+        endTime: endTime,
+        allDay: allDay,
+        location: location,
+        timeZone: timeZone,
+        calendarId: calendarId,
+        noteId: noteId,
+        taskId: taskId,
       );
       // Refresh events
-      await fetchEvents(date);
+      await fetchEvents(startTime);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
     }

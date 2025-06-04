@@ -34,7 +34,14 @@ class CalendarService extends BaseService {
   Future<CalendarEvent> createEvent({
     required String title,
     required String description,
-    required DateTime date,
+    required DateTime startTime,
+    required DateTime endTime,
+    bool allDay = false,
+    String? location,
+    String? timeZone,
+    String? calendarId,
+    String? noteId,
+    String? taskId,
   }) async {
     try {
       final response = await authenticatedPost(
@@ -42,7 +49,14 @@ class CalendarService extends BaseService {
         {
           'title': title,
           'description': description,
-          'date': date.toIso8601String(),
+          'start_time': startTime.toIso8601String(),
+          'end_time': endTime.toIso8601String(),
+          'all_day': allDay,
+          'location': location,
+          'time_zone': timeZone,
+          'calendar_id': calendarId,
+          'note_id': noteId,
+          'task_id': taskId,
         },
       );
 
