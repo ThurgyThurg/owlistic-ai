@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:owlistic/models/note.dart';
 import 'package:owlistic/utils/logger.dart';
 import 'package:owlistic/widgets/app_bar_common.dart';
 import 'package:owlistic/viewmodel/note_editor_viewmodel.dart';
+import 'package:owlistic/providers/note_editor_provider.dart';
 import 'package:owlistic/widgets/theme_switcher.dart';
 import 'package:owlistic/widgets/ai_enhancement_button.dart';
 
@@ -240,7 +242,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               noteId: _noteId!,
               onBeforeProcessing: () {
                 // Save any pending changes before AI processing
-                _noteEditorViewModel.commitPendingChanges();
+                final provider = _noteEditorViewModel as NoteEditorProvider;
+                provider.commitPendingChanges();
               },
               onProcessingComplete: () {
                 // Refresh the note content after AI processing
@@ -337,12 +340,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
             ),
             const Divider(),
-            // Add AI Enhancement Display
-            if (_noteId != null && _noteId!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: AIEnhancementDisplay(noteId: _noteId!),
-              ),
             Expanded(
               child: Stack(
                 children: [

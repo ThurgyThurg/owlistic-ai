@@ -1366,6 +1366,13 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
   }
 
   @override
+  void saveTitleIfNeeded() {
+    // This method is intentionally empty as title saving is handled
+    // by the NoteEditorScreen itself through title focus listeners
+    // and auto-save functionality
+  }
+
+  @override
   void resetState() {
     _logger.info('Resetting NoteEditorProvider state');
     

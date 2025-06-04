@@ -70,6 +70,9 @@ abstract class NoteEditorViewModel extends BaseViewModel {
   // User modified blocks tracking
   Set<String> get userModifiedBlockIds;
   
+  // Save title if needed
+  void saveTitleIfNeeded();
+  
   // Pagination scroll handling
   
   /// Initializes the scroll listener for pagination.
