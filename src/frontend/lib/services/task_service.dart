@@ -125,6 +125,7 @@ class TaskService extends BaseService {
       // Add basic task properties
       if (title != null) updates['title'] = title;
       if (noteId != null) updates['note_id'] = noteId;
+      if (isCompleted != null) updates['is_completed'] = isCompleted;
 
       final response = await authenticatedPut('/api/v1/tasks/$id', updates);
 
