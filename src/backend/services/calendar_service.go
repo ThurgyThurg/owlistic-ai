@@ -40,8 +40,25 @@ func NewCalendarService(db *gorm.DB) (*CalendarService, error) {
 	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 	redirectURL := os.Getenv("GOOGLE_REDIRECT_URI")
 
-	if clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("missing required Google OAuth credentials: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET")
+	log.Printf("Calendar Service Init - GOOGLE_CLIENT_ID length: %d", len(clientID))
+	log.Printf("Calendar Service Init - GOOGLE_CLIENT_SECRET length: %d", len(clientSecret))
+	
+	// Allow service creation even without credentials for config endpoint
+	// OAuth operations will fail but config endpoint will work
+	var oauth2Config *oauth2.Config
+	if clientID != "" && clientSecret != "" {
+		oauth2Config = &oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes: []string{
+				calendar.CalendarScope, // Full access to calendars
+			},
+			Endpoint: google.Endpoint,
+		}
+	} else {
+		log.Printf("Warning: Google OAuth credentials not configured. Calendar OAuth features will not work.")
+		log.Printf("Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable Google Calendar integration.")
 	}
 
 	// Use default redirect URI if not provided
@@ -61,16 +78,11 @@ func NewCalendarService(db *gorm.DB) (*CalendarService, error) {
 		}
 		log.Printf("Using default Google OAuth redirect URI: %s", redirectURL)
 		log.Printf("Make sure to add this URL to your Google Cloud Console OAuth 2.0 Client ID authorized redirect URIs")
-	}
-
-	oauth2Config := &oauth2.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		RedirectURL:  redirectURL,
-		Scopes: []string{
-			calendar.CalendarScope, // Full access to calendars
-		},
-		Endpoint: google.Endpoint,
+		
+		// Update oauth2Config with redirect URL if it exists
+		if oauth2Config != nil {
+			oauth2Config.RedirectURL = redirectURL
+		}
 	}
 
 	return &CalendarService{
@@ -81,6 +93,10 @@ func NewCalendarService(db *gorm.DB) (*CalendarService, error) {
 
 // GetAuthURL generates the OAuth2 authorization URL
 func (cs *CalendarService) GetAuthURL(userID uuid.UUID) string {
+	if cs.oauth2Config == nil {
+		log.Printf("Error: OAuth2 config not initialized. Missing Google OAuth credentials.")
+		return ""
+	}
 	// Use user ID as state to prevent CSRF attacks
 	state := userID.String()
 	return cs.oauth2Config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
@@ -88,6 +104,9 @@ func (cs *CalendarService) GetAuthURL(userID uuid.UUID) string {
 
 // ExchangeCodeForTokens exchanges authorization code for access tokens
 func (cs *CalendarService) ExchangeCodeForTokens(ctx context.Context, userID uuid.UUID, code string) error {
+	if cs.oauth2Config == nil {
+		return fmt.Errorf("OAuth2 config not initialized. Missing Google OAuth credentials")
+	}
 	token, err := cs.oauth2Config.Exchange(ctx, code)
 	if err != nil {
 		return fmt.Errorf("failed to exchange code for token: %w", err)
@@ -129,6 +148,9 @@ func (cs *CalendarService) GetCalendarClient(ctx context.Context, userID uuid.UU
 		Expiry:       credentials.ExpiresAt,
 	}
 
+	if cs.oauth2Config == nil {
+		return nil, fmt.Errorf("OAuth2 config not initialized. Missing Google OAuth credentials")
+	}
 	client := cs.oauth2Config.Client(ctx, token)
 	service, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
@@ -164,6 +186,9 @@ func (cs *CalendarService) refreshToken(ctx context.Context, credentials *models
 		Expiry:       credentials.ExpiresAt,
 	}
 
+	if cs.oauth2Config == nil {
+		return fmt.Errorf("OAuth2 config not initialized. Missing Google OAuth credentials")
+	}
 	tokenSource := cs.oauth2Config.TokenSource(ctx, token)
 	newToken, err := tokenSource.Token()
 	if err != nil {

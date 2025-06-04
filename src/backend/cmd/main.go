@@ -129,6 +129,7 @@ func main() {
 	if err != nil {
 		log.Printf("Failed to initialize calendar routes: %v", err)
 		log.Printf("Calendar functionality will not be available")
+		log.Printf("Note: Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables to enable calendar features")
 	} else {
 		calendarRoutes.RegisterRoutes(protectedGroup)
 		calendarRoutes.RegisterPublicRoutes(publicGroup)
