@@ -511,11 +511,19 @@ func (cr *CalendarRoutes) getOAuthConfig(c *gin.Context) {
 	
 	// Use same default logic as calendar service
 	if redirectURI == "" {
-		serverPort := os.Getenv("PORT")
-		if serverPort == "" {
-			serverPort = "8080"
+		// Check for production environment indicators
+		domain := os.Getenv("DOMAIN")
+		if domain != "" {
+			// Production environment
+			redirectURI = fmt.Sprintf("https://%s/api/calendar/oauth/callback", domain)
+		} else {
+			// Development environment
+			serverPort := os.Getenv("PORT")
+			if serverPort == "" {
+				serverPort = "8080"
+			}
+			redirectURI = fmt.Sprintf("http://localhost:%s/api/calendar/oauth/callback", serverPort)
 		}
-		redirectURI = fmt.Sprintf("http://localhost:%s/api/calendar/oauth/callback", serverPort)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

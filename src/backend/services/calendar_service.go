@@ -46,11 +46,19 @@ func NewCalendarService(db *gorm.DB) (*CalendarService, error) {
 
 	// Use default redirect URI if not provided
 	if redirectURL == "" {
-		serverPort := os.Getenv("PORT")
-		if serverPort == "" {
-			serverPort = "8080"
+		// Check for production environment indicators
+		domain := os.Getenv("DOMAIN")
+		if domain != "" {
+			// Production environment
+			redirectURL = fmt.Sprintf("https://%s/api/calendar/oauth/callback", domain)
+		} else {
+			// Development environment
+			serverPort := os.Getenv("PORT")
+			if serverPort == "" {
+				serverPort = "8080"
+			}
+			redirectURL = fmt.Sprintf("http://localhost:%s/api/calendar/oauth/callback", serverPort)
 		}
-		redirectURL = fmt.Sprintf("http://localhost:%s/api/calendar/oauth/callback", serverPort)
 		log.Printf("Using default Google OAuth redirect URI: %s", redirectURL)
 		log.Printf("Make sure to add this URL to your Google Cloud Console OAuth 2.0 Client ID authorized redirect URIs")
 	}

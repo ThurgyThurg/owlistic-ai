@@ -53,9 +53,25 @@ Make sure these APIs are enabled in your Google Cloud Project:
 
 ## Production Setup
 
-For production, update the redirect URI to your production domain:
+For production, you have two options:
+
+### Option 1: Set DOMAIN environment variable (Recommended)
 ```env
-GOOGLE_REDIRECT_URI=https://yourdomain.com/api/calendar/oauth/callback
+DOMAIN=secondbrain.graham29.com
+```
+This will automatically use `https://secondbrain.graham29.com/api/calendar/oauth/callback`
+
+### Option 2: Set GOOGLE_REDIRECT_URI explicitly
+```env
+GOOGLE_REDIRECT_URI=https://secondbrain.graham29.com/api/calendar/oauth/callback
 ```
 
-And add the production URL to your Google Cloud Console authorized redirect URIs.
+### Your Google Cloud Console Setup
+Add this URL to your Google Cloud Console authorized redirect URIs:
+```
+https://secondbrain.graham29.com/api/calendar/oauth/callback
+```
+
+## Checking Current Configuration
+
+Visit `https://secondbrain.graham29.com/api/calendar/oauth/config` to see the current redirect URI configuration.
