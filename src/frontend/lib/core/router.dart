@@ -33,7 +33,28 @@ class AppRouter {
           path: '/notebooks',
           builder: (context, state) {
             print('🔥 ROUTER: Building /notebooks route'); // Force console output
-            return const NotebooksScreen();
+            try {
+              return const NotebooksScreen();
+            } catch (e) {
+              print('🔥 ROUTER ERROR: $e'); // Force console output
+              // Return a simple error screen instead of crashing
+              return Scaffold(
+                appBar: AppBar(title: const Text('Error')),
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Error loading notebooks screen:'),
+                      Text(e.toString()),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Go Back'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
           },
         ),
         GoRoute(
