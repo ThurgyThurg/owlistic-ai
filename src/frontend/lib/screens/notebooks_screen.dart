@@ -38,7 +38,9 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
       _notebooksViewModel = context.read<NotebooksViewModel>();
       
       // Activate ViewModel and fetch data
+      print('🔥 NOTEBOOKS SCREEN: About to activate provider'); // Force console output
       _notebooksViewModel.activate();
+      print('🔥 NOTEBOOKS SCREEN: About to fetch notebooks'); // Force console output
       _notebooksViewModel.fetchNotebooks();
       
       _logger.info('NotebooksViewModel activated and initial data fetched');

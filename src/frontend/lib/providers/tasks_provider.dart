@@ -136,7 +136,9 @@ class TasksProvider with ChangeNotifier implements TasksViewModel {
       _subscribeToEvents();
     }
     
+    print('🔥 TASKS: About to fetch tasks'); // Force console output
     fetchTasks(); // Load tasks on activation
+    print('🔥 TASKS: About to load available notes'); // Force console output
     loadAvailableNotes(); // Load notes on activation
   }
 
@@ -239,12 +241,14 @@ class TasksProvider with ChangeNotifier implements TasksViewModel {
   // Fetch tasks with proper user filtering
   @override
   Future<void> fetchTasks({String? completed, String? noteId}) async {
+    print('🔥 TASKS: fetchTasks called, _isActive: $_isActive'); // Force console output
     if (!_isActive) return; // Don't fetch if not active
     
     _isLoading = true;
     notifyListeners();
 
     try {
+      print('🔥 TASKS: About to call _taskService.fetchTasks'); // Force console output
       // Make the REST API call - authentication handled by BaseService
       final tasksList = await _taskService.fetchTasks(
         completed: completed,

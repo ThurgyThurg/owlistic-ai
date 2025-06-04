@@ -76,9 +76,15 @@ class NotesProvider with ChangeNotifier implements NotesViewModel {
   }
 
   void _initializeNotebooks() async {
-    final notebooks = await _notebookService.fetchNotebooks();
-    _logger.info('NotesProvider initialized');
-    _notebooks = notebooks;
+    try {
+      final notebooks = await _notebookService.fetchNotebooks();
+      _logger.info('NotesProvider initialized');
+      _notebooks = notebooks;
+    } catch (e) {
+      _logger.error('Error initializing notebooks in NotesProvider', e);
+      print('🔥 NOTES INIT ERROR: $e'); // Force console output
+      _notebooks = []; // Set to empty list on error
+    }
   }
 
   // Getters
