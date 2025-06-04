@@ -34,14 +34,21 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
     if (!_isInitialized) {
       _isInitialized = true;
       
-      // Get ViewModel
-      _notebooksViewModel = context.read<NotebooksViewModel>();
-      
-      // Activate ViewModel and fetch data
-      print('🔥 NOTEBOOKS SCREEN: About to activate provider'); // Force console output
-      _notebooksViewModel.activate();
-      print('🔥 NOTEBOOKS SCREEN: About to fetch notebooks'); // Force console output
-      _notebooksViewModel.fetchNotebooks();
+      try {
+        print('🔥 NOTEBOOKS SCREEN: About to read provider'); // Force console output
+        // Get ViewModel
+        _notebooksViewModel = context.read<NotebooksViewModel>();
+        print('🔥 NOTEBOOKS SCREEN: Provider read successfully'); // Force console output
+        
+        // Activate ViewModel and fetch data
+        print('🔥 NOTEBOOKS SCREEN: About to activate provider'); // Force console output
+        _notebooksViewModel.activate();
+        print('🔥 NOTEBOOKS SCREEN: About to fetch notebooks'); // Force console output
+        _notebooksViewModel.fetchNotebooks();
+      } catch (e) {
+        print('🔥 NOTEBOOKS SCREEN ERROR: $e'); // Force console output
+        rethrow;
+      }
       
       _logger.info('NotebooksViewModel activated and initial data fetched');
     } else {
