@@ -190,9 +190,19 @@ class _HomeScreenState extends State<HomeScreen> {
           const Spacer(),
           TextButton(
             onPressed: () {
-              if (title.contains('Notebooks')) context.go('/notebooks');
-              if (title.contains('Notes')) context.go('/notes');
-              if (title.contains('Tasks')) context.go('/tasks');
+              print('🔥 HOME: View All button pressed for: $title'); // Force console output
+              if (title.contains('Notebooks')) {
+                print('🔥 HOME: Navigating to /notebooks'); // Force console output
+                context.go('/notebooks');
+              }
+              if (title.contains('Notes')) {
+                print('🔥 HOME: Navigating to /notes'); // Force console output
+                context.go('/notes');
+              }
+              if (title.contains('Tasks')) {
+                print('🔥 HOME: Navigating to /tasks'); // Force console output
+                context.go('/tasks');
+              }
             },
             child: const Text('View All'),
           ),

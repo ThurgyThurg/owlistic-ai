@@ -31,7 +31,10 @@ class AppRouter {
         // Login route removed - single user system with external auth
         GoRoute(
           path: '/notebooks',
-          builder: (context, state) => const NotebooksScreen(),
+          builder: (context, state) {
+            print('🔥 ROUTER: Building /notebooks route'); // Force console output
+            return const NotebooksScreen();
+          },
         ),
         GoRoute(
           path: '/notebooks/:id',
