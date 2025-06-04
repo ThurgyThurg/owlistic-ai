@@ -741,7 +741,7 @@ class _AIDashboardScreenState extends State<AIDashboardScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...agent.steps!.map((step) => _buildStepCard(step)),
+                  ...agent.steps!.map((step) => _buildAgentStepCard(step)),
                 ],
               ],
             ),
@@ -810,7 +810,7 @@ class _AIDashboardScreenState extends State<AIDashboardScreen>
     );
   }
 
-  Widget _buildStepCard(AIAgentStep step) {
+  Widget _buildAgentStepCard(AIAgentStep step) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
