@@ -315,6 +315,7 @@ class NotesProvider with ChangeNotifier implements NotesViewModel {
       return fetchedNotes;
     } catch (error) {
       _logger.error('Error fetching notes', error);
+      print('🔥 NOTES ERROR: $error'); // Force console output
       _errorMessage = 'Failed to load notes: ${error.toString()}';
       _isLoading = false;
       notifyListeners();
@@ -494,6 +495,7 @@ class NotesProvider with ChangeNotifier implements NotesViewModel {
   void activate() {
     _isActive = true;
     _logger.info('NotesProvider activated');
+    print('🔥 NOTES PROVIDER ACTIVATED'); // Force console output
     
     // Subscribe to events when activated
     if (_webSocketService.isConnected) {

@@ -10,6 +10,7 @@ import 'package:owlistic/services/websocket_service.dart';
 import 'package:owlistic/utils/logger.dart';
 import 'package:owlistic/utils/websocket_message_parser.dart';
 import 'package:owlistic/services/app_state_service.dart';
+import 'package:owlistic/services/base_service.dart';
 import 'package:owlistic/viewmodel/notebooks_viewmodel.dart';
 
 class NotebooksProvider with ChangeNotifier implements NotebooksViewModel {
@@ -162,6 +163,7 @@ class NotebooksProvider with ChangeNotifier implements NotebooksViewModel {
     
     try {
       _logger.info('Fetching notebooks...');
+      _logger.info('BaseService auth token: ${BaseService.authToken?.substring(0, 10) ?? 'null'}...');
       
       // Make the REST API call to fetch notebooks - authentication handled by BaseService
       final fetchedNotebooks = await _notebookService.fetchNotebooks(
@@ -221,6 +223,7 @@ class NotebooksProvider with ChangeNotifier implements NotebooksViewModel {
       _logger.info('Fetched ${fetchedNotebooks.length} notebooks with their notes');
     } catch (e) {
       _logger.error('Error fetching notebooks', e);
+      print('🔥 NOTEBOOKS ERROR: $e'); // Force console output
       _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -412,6 +415,7 @@ class NotebooksProvider with ChangeNotifier implements NotebooksViewModel {
   void activate() {
     _isActive = true;
     _logger.info('NotebooksProvider activated');
+    print('🔥 NOTEBOOKS PROVIDER ACTIVATED'); // Force console output
     
     // Subscribe to events when activated
     if (_webSocketService.isConnected) {

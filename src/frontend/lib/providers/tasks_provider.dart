@@ -129,6 +129,7 @@ class TasksProvider with ChangeNotifier implements TasksViewModel {
   void activate() {
     _isActive = true;
     _logger.info('TasksProvider activated');
+    print('🔥 TASKS PROVIDER ACTIVATED'); // Force console output
     
     // Subscribe to events when activated
     if (_webSocketService.isConnected) {
@@ -264,6 +265,7 @@ class TasksProvider with ChangeNotifier implements TasksViewModel {
       _logger.debug('Fetched ${_tasksMap.length} tasks');
     } catch (error) {
       _logger.error('Error fetching tasks: $error');
+      print('🔥 TASKS ERROR: $error'); // Force console output
       _tasksMap.clear(); // Reset tasks on error
     }
 
