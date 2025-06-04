@@ -336,7 +336,7 @@ class SettingsScreen extends ConsumerWidget {
   void _showGoogleCalendarDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => RiverpodConsumer(
+      builder: (context) => Consumer(
         builder: (context, ref, child) {
           final isConnected = ref.watch(googleCalendarConnectedProvider);
           final calendarService = ref.watch(calendarServiceProvider);

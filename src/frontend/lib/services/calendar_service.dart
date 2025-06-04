@@ -26,7 +26,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to load calendar events');
       }
     } catch (e) {
-      logger.e('Error fetching calendar events: $e');
+      logger.error('Error fetching calendar events: $e');
       throw e;
     }
   }
@@ -52,7 +52,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to create event');
       }
     } catch (e) {
-      logger.e('Error creating event: $e');
+      logger.error('Error creating event: $e');
       throw e;
     }
   }
@@ -74,7 +74,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to update event');
       }
     } catch (e) {
-      logger.e('Error updating event: $e');
+      logger.error('Error updating event: $e');
       throw e;
     }
   }
@@ -87,7 +87,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to delete event');
       }
     } catch (e) {
-      logger.e('Error deleting event: $e');
+      logger.error('Error deleting event: $e');
       throw e;
     }
   }
@@ -103,7 +103,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to get Google auth URL');
       }
     } catch (e) {
-      logger.e('Error getting Google auth URL: $e');
+      logger.error('Error getting Google auth URL: $e');
       throw e;
     }
   }
@@ -121,7 +121,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to connect Google Calendar');
       }
     } catch (e) {
-      logger.e('Error connecting Google Calendar: $e');
+      logger.error('Error connecting Google Calendar: $e');
       throw e;
     }
   }
@@ -134,7 +134,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to disconnect Google Calendar');
       }
     } catch (e) {
-      logger.e('Error disconnecting Google Calendar: $e');
+      logger.error('Error disconnecting Google Calendar: $e');
       throw e;
     }
   }
@@ -147,7 +147,7 @@ class CalendarService extends BaseService {
         throw Exception('Failed to sync with Google Calendar');
       }
     } catch (e) {
-      logger.e('Error syncing with Google Calendar: $e');
+      logger.error('Error syncing with Google Calendar: $e');
       throw e;
     }
   }
@@ -163,7 +163,7 @@ class CalendarService extends BaseService {
         return false;
       }
     } catch (e) {
-      logger.e('Error checking Google Calendar connection: $e');
+      logger.error('Error checking Google Calendar connection: $e');
       return false;
     }
   }
