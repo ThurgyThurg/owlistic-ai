@@ -20,8 +20,9 @@ class CalendarService extends BaseService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((e) => CalendarEvent.fromJson(e)).toList();
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final List<dynamic> events = responseData['events'] ?? [];
+        return events.map((e) => CalendarEvent.fromJson(e)).toList();
       } else {
         throw Exception('Failed to load calendar events');
       }
