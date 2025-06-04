@@ -26,6 +26,7 @@ func RunMigrations(db *gorm.DB) error {
 		// AI Enhancement models
 		&models.AIEnhancedNote{},
 		&models.AIAgent{},
+		&models.AIAgentStep{},
 		&models.AIProject{},
 		&models.AITaskEnhancement{},
 		&models.ChatMemory{},

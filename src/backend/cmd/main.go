@@ -131,6 +131,7 @@ func main() {
 		log.Printf("Calendar functionality will not be available")
 	} else {
 		calendarRoutes.RegisterRoutes(protectedGroup)
+		calendarRoutes.RegisterPublicRoutes(publicGroup)
 		log.Println("Calendar routes registered successfully")
 	}
 

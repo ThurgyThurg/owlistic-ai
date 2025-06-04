@@ -119,20 +119,47 @@ type AIEnhancedNote struct {
 
 // AIAgent represents different types of AI agents
 type AIAgent struct {
-	ID          uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	UserID      uuid.UUID      `gorm:"type:uuid;not null;constraint:OnDelete:CASCADE;" json:"user_id"`
-	AgentType   string         `gorm:"not null" json:"agent_type"` // reasoning_loop, scheduler, etc.
-	Status      string         `gorm:"default:'running'" json:"status"` // running, completed, failed
-	InputData   AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"input_data"`
-	OutputData  AIMetadata     `gorm:"type:jsonb;default:'{}'::jsonb" json:"output_data"`
-	Steps       AIMetadata     `gorm:"type:jsonb;default:'[]'::jsonb" json:"steps"`
-	ErrorMessage string        `json:"error_message,omitempty"`
-	StartedAt   time.Time      `gorm:"not null;default:now()" json:"started_at"`
-	CompletedAt *time.Time     `json:"completed_at,omitempty"`
-	CreatedAt   time.Time      `gorm:"not null;default:now()" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"not null;default:now()" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	ID           uuid.UUID       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	UserID       uuid.UUID       `gorm:"type:uuid;not null;constraint:OnDelete:CASCADE;" json:"user_id"`
+	AgentType    string          `gorm:"not null" json:"agent_type"` // reasoning_loop, scheduler, etc.
+	Status       string          `gorm:"default:'running'" json:"status"` // running, completed, failed
+	InputData    AIMetadata      `gorm:"type:jsonb;default:'{}'::jsonb" json:"input_data"`
+	OutputData   AIMetadata      `gorm:"type:jsonb;default:'{}'::jsonb" json:"output_data"`
+	Steps        []AIAgentStep   `gorm:"foreignKey:AgentID" json:"steps"`
+	ErrorMessage string          `gorm:"column:error_message" json:"error,omitempty"`
+	StartedAt    time.Time       `gorm:"not null;default:now()" json:"started_at"`
+	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
+	CreatedAt    time.Time       `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt    time.Time       `gorm:"not null;default:now()" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt  `gorm:"index" json:"deleted_at,omitempty"`
 }
+
+// AIAgentStep represents individual steps in an AI agent execution
+type AIAgentStep struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	AgentID     uuid.UUID  `gorm:"type:uuid;not null;constraint:OnDelete:CASCADE;" json:"agent_id"`
+	StepNumber  int        `gorm:"not null" json:"step_number"`
+	Name        string     `gorm:"not null" json:"name"`
+	Description string     `json:"description,omitempty"`
+	Status      string     `gorm:"default:'pending'" json:"status"` // pending, running, completed, failed
+	InputData   AIMetadata `gorm:"type:jsonb;default:'{}'::jsonb" json:"input_data,omitempty"`
+	OutputData  AIMetadata `gorm:"type:jsonb;default:'{}'::jsonb" json:"output_data,omitempty"`
+	Error       string     `json:"error,omitempty"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	CreatedAt   time.Time  `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt   time.Time  `gorm:"not null;default:now()" json:"updated_at"`
+}
+
+// ExecutionTime returns the duration of step execution
+func (s AIAgentStep) ExecutionTime() *time.Duration {
+	if s.StartedAt != nil && s.CompletedAt != nil {
+		duration := s.CompletedAt.Sub(*s.StartedAt)
+		return &duration
+	}
+	return nil
+}
+
 
 // AIProject extends Notebook concept for AI project management
 type AIProject struct {

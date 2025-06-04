@@ -38,7 +38,9 @@ func (cr *CalendarRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
 		calendarGroup.GET("/oauth/callback", cr.handleOAuthCallback)
 		calendarGroup.DELETE("/oauth/revoke", cr.revokeAccess)
 		calendarGroup.GET("/oauth/status", cr.getOAuthStatus)
-		calendarGroup.GET("/oauth/config", cr.getOAuthConfig)
+		
+		// Legacy endpoint for backwards compatibility (TEMPORARY)
+		calendarGroup.GET("/google/auth-url", cr.getAuthURL)
 
 		// Calendar management
 		calendarGroup.GET("/calendars", cr.listCalendars)
@@ -54,6 +56,15 @@ func (cr *CalendarRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
 
 		// Manual sync
 		calendarGroup.POST("/sync", cr.performSync)
+	}
+}
+
+// RegisterPublicRoutes registers routes that don't require authentication
+func (cr *CalendarRoutes) RegisterPublicRoutes(routerGroup *gin.RouterGroup) {
+	calendarGroup := routerGroup.Group("/calendar")
+	{
+		// Public OAuth config endpoint for setup
+		calendarGroup.GET("/oauth/config", cr.getOAuthConfig)
 	}
 }
 

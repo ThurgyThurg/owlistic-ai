@@ -117,9 +117,6 @@ func (r *ReasoningAgentService) ExecuteReasoningLoop(ctx context.Context, userID
 		agent.Status = "completed"
 	}
 	
-	// Store reasoning steps
-	stepsJSON, _ := json.Marshal(reasoningCtx.Steps)
-	agent.Steps = models.AIMetadata{"steps": json.RawMessage(stepsJSON)}
 	agent.OutputData = models.AIMetadata{
 		"final_state": reasoningCtx.CurrentState,
 		"learnings":   reasoningCtx.Learnings,

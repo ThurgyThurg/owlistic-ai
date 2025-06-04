@@ -495,6 +495,7 @@ func (ar *AIRoutes) getAgentRuns(c *gin.Context) {
 
 	var agents []models.AIAgent
 	if err := ar.db.Where("user_id = ?", userID).
+		Preload("Steps").
 		Order("created_at DESC").
 		Limit(limit).
 		Find(&agents).Error; err != nil {
@@ -645,14 +646,6 @@ func (ar *AIRoutes) breakDownTask(c *gin.Context) {
 	}
 
 	// Store the task breakdown as an AI agent run for tracking
-	// Extract steps from breakdown for proper storage
-	var steps models.AIMetadata
-	if stepsData, exists := breakdown["steps"]; exists {
-		steps = models.AIMetadata{"steps": stepsData}
-	} else {
-		steps = models.AIMetadata{}
-	}
-	
 	agent := models.AIAgent{
 		UserID:    userID.(uuid.UUID),
 		AgentType: "task_breakdown",
@@ -666,7 +659,6 @@ func (ar *AIRoutes) breakDownTask(c *gin.Context) {
 			"preferences":  request.Preferences,
 		},
 		OutputData: breakdown,
-		Steps:      steps,
 	}
 
 	if err := ar.db.Create(&agent).Error; err != nil {
