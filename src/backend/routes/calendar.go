@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"owlistic-notes/owlistic/database"
 	"owlistic-notes/owlistic/models"
 	"owlistic-notes/owlistic/services"
 )
@@ -30,55 +31,63 @@ func NewCalendarRoutes(db *gorm.DB) (*CalendarRoutes, error) {
 	}, nil
 }
 
-func (cr *CalendarRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
-	calendarGroup := routerGroup.Group("/calendar")
-	{
-		// OAuth endpoints
-		calendarGroup.GET("/oauth/authorize", cr.getAuthURL)
-		calendarGroup.GET("/oauth/callback", cr.handleOAuthCallback)
-		calendarGroup.DELETE("/oauth/revoke", cr.revokeAccess)
-		calendarGroup.GET("/oauth/status", cr.getOAuthStatus)
-		
-		// Legacy endpoint for backwards compatibility (TEMPORARY)
-		calendarGroup.GET("/google/auth-url", cr.getAuthURL)
-
-		// Calendar management
-		calendarGroup.GET("/calendars", cr.listCalendars)
-		calendarGroup.POST("/calendars/:id/sync", cr.syncCalendar)
-		calendarGroup.GET("/sync-status", cr.getSyncStatus)
-
-		// Event CRUD operations
-		calendarGroup.POST("/events", cr.createEvent)
-		calendarGroup.GET("/events", cr.getEvents)
-		calendarGroup.GET("/events/:id", cr.getEvent)
-		calendarGroup.PUT("/events/:id", cr.updateEvent)
-		calendarGroup.DELETE("/events/:id", cr.deleteEvent)
-
-		// Manual sync
-		calendarGroup.POST("/sync", cr.performSync)
+// getUserID extracts user ID from context, falling back to single-user mode
+func (cr *CalendarRoutes) getUserID(c *gin.Context) (uuid.UUID, error) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		// For single-user mode, get the first user from database
+		return getSingleUserID(&database.Database{DB: cr.db}), nil
 	}
+	
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		return uuid.UUID{}, fmt.Errorf("invalid user ID format")
+	}
+	
+	return userUUID, nil
+}
+
+func (cr *CalendarRoutes) RegisterRoutes(routerGroup *gin.RouterGroup) {
+	// In single-user mode, all calendar routes are moved to public routes
+	// This method is kept for compatibility but doesn't register any routes
 }
 
 // RegisterPublicRoutes registers routes that don't require authentication
 func (cr *CalendarRoutes) RegisterPublicRoutes(routerGroup *gin.RouterGroup) {
 	calendarGroup := routerGroup.Group("/calendar")
 	{
-		// Public OAuth config endpoint for setup
+		// OAuth endpoints (public for single-user mode)
 		calendarGroup.GET("/oauth/config", cr.getOAuthConfig)
+		calendarGroup.GET("/oauth/authorize", cr.getAuthURL)
+		calendarGroup.GET("/oauth/callback", cr.handleOAuthCallback)
+		calendarGroup.DELETE("/oauth/revoke", cr.revokeAccess)
+		calendarGroup.GET("/oauth/status", cr.getOAuthStatus)
+		
+		// Legacy endpoint for backwards compatibility
+		calendarGroup.GET("/google/auth-url", cr.getAuthURL)
+
+		// Calendar management (public for single-user mode)
+		calendarGroup.GET("/calendars", cr.listCalendars)
+		calendarGroup.POST("/calendars/:id/sync", cr.syncCalendar)
+		calendarGroup.GET("/sync-status", cr.getSyncStatus)
+
+		// Event CRUD operations (public for single-user mode)
+		calendarGroup.POST("/events", cr.createEvent)
+		calendarGroup.GET("/events", cr.getEvents)
+		calendarGroup.GET("/events/:id", cr.getEvent)
+		calendarGroup.PUT("/events/:id", cr.updateEvent)
+		calendarGroup.DELETE("/events/:id", cr.deleteEvent)
+
+		// Manual sync (public for single-user mode)
+		calendarGroup.POST("/sync", cr.performSync)
 	}
 }
 
 // getAuthURL generates the OAuth2 authorization URL
 func (cr *CalendarRoutes) getAuthURL(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userUUID, err := cr.getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user ID: " + err.Error()})
 		return
 	}
 
