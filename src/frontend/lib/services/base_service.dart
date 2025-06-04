@@ -102,6 +102,21 @@ abstract class BaseService {
   }
 
   // Helper methods for API calls with better error handling
+  Future<http.Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
+    final uri = await createUri(path, queryParameters: queryParameters);
+    _logger.debug('GET (no auth): $uri');
+    
+    try {
+      final headers = getBaseHeaders();
+      final response = await http.get(uri, headers: headers);
+      _validateResponse(response, 'GET', uri.toString());
+      return response;
+    } catch (e) {
+      _logger.error('HTTP GET error: $path', e);
+      rethrow;
+    }
+  }
+
   Future<http.Response> authenticatedGet(String path, {Map<String, dynamic>? queryParameters}) async {
     final uri = await createUri(path, queryParameters: queryParameters);
     _logger.debug('GET: $uri');
