@@ -775,12 +775,12 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 
 	// Add overview content blocks
 	blocks := []struct {
-		blockType string
+		blockType models.BlockType
 		content   map[string]interface{}
 		order     float64
 	}{
 		{
-			blockType: "header",
+			blockType: models.HeadingBlock,
 			content: map[string]interface{}{
 				"text":  "Agent Chain Execution Results",
 				"level": 1,
@@ -788,7 +788,7 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 			order: 1000.0,
 		},
 		{
-			blockType: "text",
+			blockType: models.TextBlock,
 			content: map[string]interface{}{
 				"text": fmt.Sprintf("**Chain:** %s\n**Mode:** %s\n**Status:** %s\n**Duration:** %.2fs\n**Execution ID:** %s",
 					chain.Name, chain.Mode, result.Status, 
@@ -807,11 +807,11 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 		}
 		
 		blocks = append(blocks, struct {
-			blockType string
+			blockType models.BlockType
 			content   map[string]interface{}
 			order     float64
 		}{
-			blockType: "text",
+			blockType: models.TextBlock,
 			content: map[string]interface{}{
 				"text": errorText.String(),
 			},
@@ -850,12 +850,12 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 
 		// Create blocks for agent execution details
 		agentBlocks := []struct {
-			blockType string
+			blockType models.BlockType
 			content   map[string]interface{}
 			order     float64
 		}{
 			{
-				blockType: "header",
+				blockType: models.HeadingBlock,
 				content: map[string]interface{}{
 					"text":  fmt.Sprintf("Agent: %s", log.AgentName),
 					"level": 1,
@@ -863,7 +863,7 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 				order: 1000.0,
 			},
 			{
-				blockType: "text",
+				blockType: models.TextBlock,
 				content: map[string]interface{}{
 					"text": fmt.Sprintf("**Status:** %s\n**Duration:** %.2fs\n**Agent ID:** %s",
 						log.Status, log.Duration, log.AgentID),
@@ -876,11 +876,11 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 		if len(log.Input) > 0 {
 			inputJSON, _ := json.MarshalIndent(log.Input, "", "  ")
 			agentBlocks = append(agentBlocks, struct {
-				blockType string
+				blockType models.BlockType
 				content   map[string]interface{}
 				order     float64
 			}{
-				blockType: "header",
+				blockType: models.HeadingBlock,
 				content: map[string]interface{}{
 					"text":  "Input Parameters",
 					"level": 2,
@@ -888,11 +888,11 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 				order: 3000.0,
 			})
 			agentBlocks = append(agentBlocks, struct {
-				blockType string
+				blockType models.BlockType
 				content   map[string]interface{}
 				order     float64
 			}{
-				blockType: "text",
+				blockType: models.TextBlock,
 				content: map[string]interface{}{
 					"text": fmt.Sprintf("```json\n%s\n```", string(inputJSON)),
 				},
@@ -902,11 +902,11 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 
 		// Add output details
 		agentBlocks = append(agentBlocks, struct {
-			blockType string
+			blockType models.BlockType
 			content   map[string]interface{}
 			order     float64
 		}{
-			blockType: "header",
+			blockType: models.HeadingBlock,
 			content: map[string]interface{}{
 				"text":  "Output",
 				"level": 2,
@@ -931,11 +931,11 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 		}
 
 		agentBlocks = append(agentBlocks, struct {
-			blockType string
+			blockType models.BlockType
 			content   map[string]interface{}
 			order     float64
 		}{
-			blockType: "text",
+			blockType: models.TextBlock,
 			content: map[string]interface{}{
 				"text": outputText,
 			},
@@ -973,12 +973,12 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 			resultsJSON, _ := json.MarshalIndent(result.Results, "", "  ")
 			
 			resultBlocks := []struct {
-				blockType string
+				blockType models.BlockType
 				content   map[string]interface{}
 				order     float64
 			}{
 				{
-					blockType: "header",
+					blockType: models.HeadingBlock,
 					content: map[string]interface{}{
 						"text":  "Chain Results",
 						"level": 1,
@@ -986,7 +986,7 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 					order: 1000.0,
 				},
 				{
-					blockType: "text",
+					blockType: models.TextBlock,
 					content: map[string]interface{}{
 						"text": fmt.Sprintf("```json\n%s\n```", string(resultsJSON)),
 					},
