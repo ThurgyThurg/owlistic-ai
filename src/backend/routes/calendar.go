@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -272,9 +273,11 @@ func (cr *CalendarRoutes) createEvent(c *gin.Context) {
 
 	var request services.CalendarEventRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Printf("Calendar event binding error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("Calendar event request: %+v", request)
 
 	event, err := cr.calendarService.CreateEvent(c.Request.Context(), userUUID, request)
 	if err != nil {
