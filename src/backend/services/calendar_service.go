@@ -616,3 +616,30 @@ func (cs *CalendarService) HasCalendarAccess(ctx context.Context, userID uuid.UU
 	_, err := cs.getValidCredentials(ctx, userID)
 	return err == nil
 }
+
+// GetTodaysEvents retrieves all events for today for a specific user
+func (cs *CalendarService) GetTodaysEvents(ctx context.Context, userID uuid.UUID) ([]models.CalendarEvent, error) {
+	now := time.Now()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
+	
+	return cs.GetEvents(ctx, userID, startOfDay, endOfDay)
+}
+
+// SyncAllCalendars syncs all user calendars
+func (cs *CalendarService) SyncAllCalendars(ctx context.Context, userID uuid.UUID) error {
+	// Get user's calendars
+	calendars, err := cs.ListCalendars(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to list calendars: %w", err)
+	}
+	
+	// Sync primary calendar or first available calendar
+	for _, cal := range calendars {
+		if cal.Primary || len(calendars) == 1 {
+			return cs.PerformSync(ctx, userID, cal.Id)
+		}
+	}
+	
+	return fmt.Errorf("no calendars found to sync")
+}

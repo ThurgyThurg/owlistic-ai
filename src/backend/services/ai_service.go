@@ -1102,3 +1102,59 @@ func (ai *AIService) CreateProjectNotebook(ctx context.Context, userID uuid.UUID
 	
 	return &notebook.ID, noteIDs, nil
 }
+
+// SearchNotes performs semantic search across user's notes
+func (ai *AIService) SearchNotes(ctx context.Context, userID uuid.UUID, query string, limit int) ([]models.Note, error) {
+	// First try semantic search using ChromaDB if available
+	if ai.chromaService != nil {
+		// Try semantic search
+		where := map[string]interface{}{
+			"user_id": userID.String(),
+		}
+		
+		results, err := ai.chromaService.QueryByText(ctx, NoteEmbeddingsCollection, []string{query}, limit, where)
+		if err == nil && len(results.IDs) > 0 && len(results.IDs[0]) > 0 {
+			// Convert ChromaDB IDs back to note IDs and fetch notes
+			var notes []models.Note
+			for _, chromaID := range results.IDs[0] {
+				noteID, err := ChromaIDToNoteID(chromaID)
+				if err != nil {
+					log.Printf("Failed to parse note ID from ChromaDB ID %s: %v", chromaID, err)
+					continue
+				}
+				
+				var note models.Note
+				if err := ai.db.WithContext(ctx).Where("id = ? AND user_id = ?", noteID, userID).First(&note).Error; err != nil {
+					log.Printf("Failed to find note %s: %v", noteID, err)
+					continue
+				}
+				
+				notes = append(notes, note)
+			}
+			
+			if len(notes) > 0 {
+				return notes, nil
+			}
+		}
+	}
+	
+	// Fallback to text search if semantic search fails or returns no results
+	var notes []models.Note
+	searchTerm := "%" + query + "%"
+	
+	err := ai.db.WithContext(ctx).Where("user_id = ? AND title ILIKE ?", userID, searchTerm).
+		Limit(limit).Order("updated_at DESC").Find(&notes).Error
+	
+	return notes, err
+}
+
+// ChromaIDToNoteID converts a ChromaDB document ID back to a note UUID
+func ChromaIDToNoteID(chromaID string) (uuid.UUID, error) {
+	// ChromaDB IDs are in format "note_<uuid>"
+	if !strings.HasPrefix(chromaID, "note_") {
+		return uuid.Nil, fmt.Errorf("invalid ChromaDB ID format: %s", chromaID)
+	}
+	
+	noteIDStr := strings.TrimPrefix(chromaID, "note_")
+	return uuid.Parse(noteIDStr)
+}

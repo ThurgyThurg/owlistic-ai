@@ -502,11 +502,3 @@ func NoteIDToChromaID(noteID uuid.UUID) string {
 	return fmt.Sprintf("note_%s", noteID.String())
 }
 
-// Helper function to convert ChromaDB document ID back to note ID
-func ChromaIDToNoteID(chromaID string) (uuid.UUID, error) {
-	if len(chromaID) < 6 || chromaID[:5] != "note_" {
-		return uuid.Nil, fmt.Errorf("invalid chroma ID format: %s", chromaID)
-	}
-	
-	return uuid.Parse(chromaID[5:])
-}
