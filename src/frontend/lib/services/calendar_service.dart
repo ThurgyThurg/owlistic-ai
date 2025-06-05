@@ -200,4 +200,58 @@ class CalendarService extends BaseService {
       throw e;
     }
   }
+
+  Future<List<Map<String, dynamic>>> listGoogleCalendars() async {
+    try {
+      final response = await authenticatedGet('/api/v1/calendar/calendars');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data['calendars'] ?? []);
+      } else {
+        throw Exception('Failed to list calendars');
+      }
+    } catch (e) {
+      logger.error('Error listing Google calendars: $e');
+      throw e;
+    }
+  }
+
+  Future<void> setupCalendarSync({
+    required String calendarId,
+    required String calendarName,
+    String syncDirection = 'bidirectional',
+  }) async {
+    try {
+      final response = await authenticatedPost(
+        '/api/v1/calendar/calendars/$calendarId/sync',
+        {
+          'calendar_name': calendarName,
+          'sync_direction': syncDirection,
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to setup calendar sync');
+      }
+    } catch (e) {
+      logger.error('Error setting up calendar sync: $e');
+      throw e;
+    }
+  }
+
+  Future<Map<String, dynamic>> getSyncStatus() async {
+    try {
+      final response = await authenticatedGet('/api/v1/calendar/sync-status');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to get sync status');
+      }
+    } catch (e) {
+      logger.error('Error getting sync status: $e');
+      throw e;
+    }
+  }
 }

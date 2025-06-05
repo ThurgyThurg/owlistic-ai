@@ -369,6 +369,18 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        // Show calendar selection dialog
+                        _showCalendarSelectionDialog(context, ref, calendarService);
+                      },
+                      icon: const Icon(Icons.settings),
+                      label: const Text('Manage Calendar Sync'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         await calendarService.syncWithGoogle();
@@ -545,6 +557,138 @@ class SettingsScreen extends ConsumerWidget {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showCalendarSelectionDialog(BuildContext context, WidgetRef ref, CalendarService calendarService) {
+    showDialog(
+      context: context,
+      builder: (context) => FutureBuilder<List<Map<String, dynamic>>>(
+        future: calendarService.listGoogleCalendars(),
+        builder: (context, snapshot) {
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.calendar_month),
+                SizedBox(width: 8),
+                Text('Select Calendars to Sync'),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const Center(child: CircularProgressIndicator())
+                  else if (snapshot.hasError)
+                    Text(
+                      'Error loading calendars: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    )
+                  else if (!snapshot.hasData || snapshot.data!.isEmpty)
+                    const Text('No calendars found')
+                  else
+                    Expanded(
+                      child: FutureBuilder<Map<String, dynamic>>(
+                        future: calendarService.getSyncStatus(),
+                        builder: (context, syncSnapshot) {
+                          final syncedCalendars = <String>{};
+                          if (syncSnapshot.hasData) {
+                            final syncList = syncSnapshot.data!['sync_calendars'] as List? ?? [];
+                            for (var sync in syncList) {
+                              syncedCalendars.add(sync['google_calendar_id']);
+                            }
+                          }
+                          
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: snapshot.data!.length,
+                            itemBuilder: (context, index) {
+                              final calendar = snapshot.data![index];
+                              final calendarId = calendar['id'] as String;
+                              final calendarName = calendar['summary'] as String? ?? 'Unnamed Calendar';
+                              final isPrimary = calendar['primary'] == true;
+                              final isSynced = syncedCalendars.contains(calendarId);
+                              
+                              return Card(
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.calendar_today,
+                                    color: isSynced ? Colors.green : null,
+                                  ),
+                                  title: Text(calendarName),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (isPrimary)
+                                        const Text(
+                                          'Primary Calendar',
+                                          style: TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      if (isSynced)
+                                        const Text(
+                                          'Currently synced',
+                                          style: TextStyle(color: Colors.green),
+                                        ),
+                                    ],
+                                  ),
+                                  trailing: isSynced
+                                      ? const Icon(Icons.check_circle, color: Colors.green)
+                                      : ElevatedButton(
+                                          onPressed: () async {
+                                            try {
+                                              await calendarService.setupCalendarSync(
+                                                calendarId: calendarId,
+                                                calendarName: calendarName,
+                                              );
+                                              if (context.mounted) {
+                                                Navigator.of(context).pop();
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Set up sync for $calendarName'),
+                                                  ),
+                                                );
+                                                // Trigger initial sync
+                                                await calendarService.syncWithGoogle();
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Error: $e'),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          child: const Text('Sync This'),
+                                        ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Select which Google Calendars to sync with Owlistic.',
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Done'),
               ),
             ],
           );
