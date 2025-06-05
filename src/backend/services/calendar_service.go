@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -22,17 +23,51 @@ type CalendarService struct {
 	oauth2Config *oauth2.Config
 }
 
+// FlexibleTime is a custom time type that can parse multiple time formats
+type FlexibleTime struct {
+	time.Time
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for flexible time parsing
+func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
+	// Remove quotes from the JSON string
+	str := strings.Trim(string(data), "\"")
+	
+	// Try multiple time formats
+	formats := []string{
+		time.RFC3339,                    // Standard RFC3339 with timezone
+		time.RFC3339Nano,                // RFC3339 with nanoseconds
+		"2006-01-02T15:04:05.000Z07:00", // With milliseconds and timezone
+		"2006-01-02T15:04:05.000",       // With milliseconds, no timezone (assume UTC)
+		"2006-01-02T15:04:05",           // No milliseconds, no timezone (assume UTC)
+		"2006-01-02 15:04:05",           // Space separator (assume UTC)
+	}
+	
+	for _, format := range formats {
+		if t, err := time.Parse(format, str); err == nil {
+			// If no timezone was specified (formats without Z07:00), assume UTC
+			if !strings.Contains(format, "Z07:00") {
+				t = t.UTC()
+			}
+			ft.Time = t
+			return nil
+		}
+	}
+	
+	return fmt.Errorf("unable to parse time: %s", str)
+}
+
 type CalendarEventRequest struct {
-	Title       string    `json:"title" binding:"required"`
-	Description string    `json:"description"`
-	Location    string    `json:"location"`
-	StartTime   time.Time `json:"start_time" binding:"required"`
-	EndTime     time.Time `json:"end_time" binding:"required"`
-	AllDay      bool      `json:"all_day"`
-	TimeZone    string    `json:"time_zone"`
-	CalendarID  string    `json:"calendar_id"` // Google Calendar ID
-	NoteID      *string   `json:"note_id,omitempty"`
-	TaskID      *string   `json:"task_id,omitempty"`
+	Title       string       `json:"title" binding:"required"`
+	Description string       `json:"description"`
+	Location    string       `json:"location"`
+	StartTime   FlexibleTime `json:"start_time" binding:"required"`
+	EndTime     FlexibleTime `json:"end_time" binding:"required"`
+	AllDay      bool         `json:"all_day"`
+	TimeZone    string       `json:"time_zone"`
+	CalendarID  string       `json:"calendar_id"` // Google Calendar ID
+	NoteID      *string      `json:"note_id,omitempty"`
+	TaskID      *string      `json:"task_id,omitempty"`
 }
 
 func NewCalendarService(db *gorm.DB) (*CalendarService, error) {
@@ -394,10 +429,10 @@ func (cs *CalendarService) CreateEvent(ctx context.Context, userID uuid.UUID, re
 	// Set event times
 	if req.AllDay {
 		googleEvent.Start = &calendar.EventDateTime{
-			Date: req.StartTime.Format("2006-01-02"),
+			Date: req.StartTime.Time.Format("2006-01-02"),
 		}
 		googleEvent.End = &calendar.EventDateTime{
-			Date: req.EndTime.Format("2006-01-02"),
+			Date: req.EndTime.Time.Format("2006-01-02"),
 		}
 	} else {
 		timeZone := req.TimeZone
@@ -405,11 +440,11 @@ func (cs *CalendarService) CreateEvent(ctx context.Context, userID uuid.UUID, re
 			timeZone = "UTC"
 		}
 		googleEvent.Start = &calendar.EventDateTime{
-			DateTime: req.StartTime.Format(time.RFC3339),
+			DateTime: req.StartTime.Time.Format(time.RFC3339),
 			TimeZone: timeZone,
 		}
 		googleEvent.End = &calendar.EventDateTime{
-			DateTime: req.EndTime.Format(time.RFC3339),
+			DateTime: req.EndTime.Time.Format(time.RFC3339),
 			TimeZone: timeZone,
 		}
 	}
@@ -441,8 +476,8 @@ func (cs *CalendarService) CreateEvent(ctx context.Context, userID uuid.UUID, re
 		Title:            req.Title,
 		Description:      req.Description,
 		Location:         req.Location,
-		StartTime:        req.StartTime,
-		EndTime:          req.EndTime,
+		StartTime:        req.StartTime.Time,
+		EndTime:          req.EndTime.Time,
 		AllDay:           req.AllDay,
 		TimeZone:         req.TimeZone,
 		Status:           "confirmed",
@@ -491,10 +526,10 @@ func (cs *CalendarService) UpdateEvent(ctx context.Context, userID uuid.UUID, ev
 	// Set event times
 	if req.AllDay {
 		googleEvent.Start = &calendar.EventDateTime{
-			Date: req.StartTime.Format("2006-01-02"),
+			Date: req.StartTime.Time.Format("2006-01-02"),
 		}
 		googleEvent.End = &calendar.EventDateTime{
-			Date: req.EndTime.Format("2006-01-02"),
+			Date: req.EndTime.Time.Format("2006-01-02"),
 		}
 	} else {
 		timeZone := req.TimeZone
@@ -502,11 +537,11 @@ func (cs *CalendarService) UpdateEvent(ctx context.Context, userID uuid.UUID, ev
 			timeZone = event.TimeZone
 		}
 		googleEvent.Start = &calendar.EventDateTime{
-			DateTime: req.StartTime.Format(time.RFC3339),
+			DateTime: req.StartTime.Time.Format(time.RFC3339),
 			TimeZone: timeZone,
 		}
 		googleEvent.End = &calendar.EventDateTime{
-			DateTime: req.EndTime.Format(time.RFC3339),
+			DateTime: req.EndTime.Time.Format(time.RFC3339),
 			TimeZone: timeZone,
 		}
 	}
@@ -521,8 +556,8 @@ func (cs *CalendarService) UpdateEvent(ctx context.Context, userID uuid.UUID, ev
 	event.Title = req.Title
 	event.Description = req.Description
 	event.Location = req.Location
-	event.StartTime = req.StartTime
-	event.EndTime = req.EndTime
+	event.StartTime = req.StartTime.Time
+	event.EndTime = req.EndTime.Time
 	event.AllDay = req.AllDay
 	if req.TimeZone != "" {
 		event.TimeZone = req.TimeZone
