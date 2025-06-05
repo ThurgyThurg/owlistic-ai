@@ -11,7 +11,14 @@ final calendarProvider = StateNotifierProvider<CalendarNotifier, AsyncValue<List
   return CalendarNotifier(service);
 });
 
-final googleCalendarConnectedProvider = StateProvider<bool>((ref) => false);
+final googleCalendarConnectedProvider = FutureProvider<bool>((ref) async {
+  final calendarService = ref.watch(calendarServiceProvider);
+  try {
+    return await calendarService.isGoogleCalendarConnected();
+  } catch (e) {
+    return false;
+  }
+});
 
 class CalendarNotifier extends StateNotifier<AsyncValue<List<CalendarEvent>>> {
   final CalendarService _service;

@@ -10,8 +10,33 @@ import '../widgets/card_container.dart';
 import '../providers/calendar_provider.dart';
 import '../services/calendar_service.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
+
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    
+    // Check for calendar connection success from OAuth redirect
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final uri = Uri.parse(ModalRoute.of(context)?.settings.name ?? '');
+      if (uri.queryParameters.containsKey('calendar_connected')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google Calendar connected successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Refresh the connection status
+        ref.invalidate(googleCalendarConnectedProvider);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -338,7 +363,7 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (context) => Consumer(
         builder: (context, ref, child) {
-          final isConnected = ref.watch(googleCalendarConnectedProvider);
+          final connectionAsync = ref.watch(googleCalendarConnectedProvider);
           final calendarService = ref.watch(calendarServiceProvider);
           
           return AlertDialog(
@@ -349,73 +374,76 @@ class SettingsScreen extends ConsumerWidget {
                 Text('Google Calendar'),
               ],
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isConnected) ...[
-                  const Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.green, size: 20),
-                      SizedBox(width: 8),
-                      Text('Connected to Google Calendar'),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Your calendar events are synced with Google Calendar.',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        // Show calendar selection dialog
-                        _showCalendarSelectionDialog(context, ref, calendarService);
-                      },
-                      icon: const Icon(Icons.settings),
-                      label: const Text('Manage Calendar Sync'),
+            content: connectionAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Text('Error checking connection: $error'),
+              data: (isConnected) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isConnected) ...[
+                    const Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        SizedBox(width: 8),
+                        Text('Connected to Google Calendar'),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        await calendarService.syncWithGoogle();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Calendar synced successfully')),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.sync),
-                      label: const Text('Sync Now'),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Your calendar events are synced with Google Calendar.',
+                      style: TextStyle(fontSize: 14),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await calendarService.disconnectGoogleCalendar();
-                        ref.read(googleCalendarConnectedProvider.notifier).state = false;
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Disconnected from Google Calendar')),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.link_off),
-                      label: const Text('Disconnect'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          // Show calendar selection dialog
+                          _showCalendarSelectionDialog(context, ref, calendarService);
+                        },
+                        icon: const Icon(Icons.settings),
+                        label: const Text('Manage Calendar Sync'),
                       ),
                     ),
-                  ),
-                ] else ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await calendarService.syncWithGoogle();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Calendar synced successfully')),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.sync),
+                        label: const Text('Sync Now'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await calendarService.disconnectGoogleCalendar();
+                          ref.invalidate(googleCalendarConnectedProvider);
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Disconnected from Google Calendar')),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.link_off),
+                        label: const Text('Disconnect'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
                   const Text(
                     'Connect your Google Calendar to:',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -550,8 +578,9 @@ class SettingsScreen extends ConsumerWidget {
                       label: const Text('Connect Google Calendar'),
                     ),
                   ),
+                  ],
                 ],
-              ],
+              ),
             ),
             actions: [
               TextButton(

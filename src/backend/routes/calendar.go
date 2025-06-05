@@ -127,10 +127,20 @@ func (cr *CalendarRoutes) handleOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Google Calendar access granted successfully",
-		"user_id": userUUID,
-	})
+	// Redirect back to the app with success message
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		// Use the domain if available, otherwise default to localhost
+		domain := os.Getenv("DOMAIN")
+		if domain != "" {
+			frontendURL = "https://" + domain
+		} else {
+			frontendURL = "http://localhost"
+		}
+	}
+	
+	// Redirect to the calendar page or settings with a success indicator
+	c.Redirect(http.StatusFound, frontendURL + "/#/settings?calendar_connected=true")
 }
 
 // revokeAccess revokes Google Calendar access
