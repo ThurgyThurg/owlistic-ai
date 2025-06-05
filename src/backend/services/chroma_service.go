@@ -100,9 +100,10 @@ func NewChromaService(baseURL string, db *gorm.DB) *ChromaService {
 
 // CreateCollection creates a new collection with specified configuration
 func (cs *ChromaService) CreateCollection(ctx context.Context, name string, config *ChromaConfiguration) error {
-	// Collection configuration for optimal note search
+	// Collection configuration for optimal note search  
 	payload := map[string]interface{}{
 		"name": name,
+		"get_or_create": true, // Use get_or_create to avoid conflicts
 		"metadata": map[string]interface{}{
 			"description": "Owlistic AI note embeddings collection",
 			"created":     time.Now().Format(time.RFC3339),
@@ -138,7 +139,8 @@ func (cs *ChromaService) CreateCollection(ctx context.Context, name string, conf
 		return fmt.Errorf("failed to marshal create collection request: %w", err)
 	}
 	
-	url := cs.baseURL + "/api/v1/collections"
+	// Use ChromaDB v2 API with default tenant and database
+	url := cs.getCollectionsURL()
 	log.Printf("Creating ChromaDB collection at URL: %s", url)
 	
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
@@ -158,6 +160,10 @@ func (cs *ChromaService) CreateCollection(ctx context.Context, name string, conf
 	log.Printf("ChromaDB response: status=%d, body=%s", resp.StatusCode, string(body))
 	
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		// Log the error but don't fail completely - AI features can work without vector search
+		log.Printf("ChromaDB collection creation failed (status %d): %s", resp.StatusCode, string(body))
+		log.Printf("This likely means ChromaDB is using a different API version or is not properly configured")
+		log.Printf("Vector search will be disabled, but all other AI features will continue to work")
 		return fmt.Errorf("failed to create collection, status %d: %s", resp.StatusCode, string(body))
 	}
 	
@@ -167,30 +173,28 @@ func (cs *ChromaService) CreateCollection(ctx context.Context, name string, conf
 
 // GetOrCreateCollection gets an existing collection or creates it if it doesn't exist
 func (cs *ChromaService) GetOrCreateCollection(ctx context.Context, name string, config *ChromaConfiguration) error {
-	// First try to get the collection
-	req, err := http.NewRequestWithContext(ctx, "GET", cs.baseURL+"/collections/"+name, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+	// For v2 API, we need to ensure tenant and database exist first
+	tenant := "default_tenant" 
+	database := "default_database"
+	
+	// Create tenant if needed
+	if err := cs.ensureTenant(ctx, tenant); err != nil {
+		log.Printf("Warning: Could not ensure tenant exists: %v", err)
 	}
 	
-	resp, err := cs.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to check collection: %w", err)
-	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode == http.StatusOK {
-		log.Printf("ChromaDB collection '%s' already exists", name)
-		return nil
+	// Create database if needed
+	if err := cs.ensureDatabase(ctx, tenant, database); err != nil {
+		log.Printf("Warning: Could not ensure database exists: %v", err)
 	}
 	
-	// Collection doesn't exist, create it
+	// Create the collection
 	return cs.CreateCollection(ctx, name, config)
 }
 
 // DeleteCollection deletes a collection and all its data
 func (cs *ChromaService) DeleteCollection(ctx context.Context, name string) error {
-	req, err := http.NewRequestWithContext(ctx, "DELETE", cs.baseURL+"/collections/"+name, nil)
+	url := cs.getCollectionURL(name)
+	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -222,7 +226,8 @@ func (cs *ChromaService) AddDocuments(ctx context.Context, collectionName string
 		return fmt.Errorf("failed to marshal add request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/add", bytes.NewBuffer(jsonData))
+	url := cs.getCollectionURL(collectionName) + "/add"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -255,7 +260,8 @@ func (cs *ChromaService) UpdateDocuments(ctx context.Context, collectionName str
 		return fmt.Errorf("failed to marshal update request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/update", bytes.NewBuffer(jsonData))
+	url := cs.getCollectionURL(collectionName) + "/update"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -343,7 +349,8 @@ func (cs *ChromaService) DeleteDocuments(ctx context.Context, collectionName str
 		return fmt.Errorf("failed to marshal delete request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/delete", bytes.NewBuffer(jsonData))
+	url := cs.getCollectionURL(collectionName) + "/delete"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -377,7 +384,8 @@ func (cs *ChromaService) QueryByText(ctx context.Context, collectionName string,
 		return nil, fmt.Errorf("failed to marshal query request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/query", bytes.NewBuffer(jsonData))
+	url := cs.getCollectionURL(collectionName) + "/query"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -416,7 +424,8 @@ func (cs *ChromaService) QueryByEmbedding(ctx context.Context, collectionName st
 		return nil, fmt.Errorf("failed to marshal query request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/query", bytes.NewBuffer(jsonData))
+	url := cs.getCollectionURL(collectionName) + "/query"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -453,7 +462,8 @@ func (cs *ChromaService) GetDocuments(ctx context.Context, collectionName string
 		return nil, fmt.Errorf("failed to marshal get request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/get", bytes.NewBuffer(jsonData))
+	url := cs.getCollectionURL(collectionName) + "/get"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -480,7 +490,8 @@ func (cs *ChromaService) GetDocuments(ctx context.Context, collectionName string
 
 // CountDocuments returns the number of documents in a collection
 func (cs *ChromaService) CountDocuments(ctx context.Context, collectionName string) (int, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", cs.baseURL+"/collections/"+collectionName+"/count", nil)
+	url := cs.getCollectionURL(collectionName) + "/count"
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -512,5 +523,85 @@ func (cs *ChromaService) CountDocuments(ctx context.Context, collectionName stri
 // Helper function to convert note ID to ChromaDB document ID
 func NoteIDToChromaID(noteID uuid.UUID) string {
 	return fmt.Sprintf("note_%s", noteID.String())
+}
+
+// ensureTenant creates a tenant if it doesn't exist
+func (cs *ChromaService) ensureTenant(ctx context.Context, tenantName string) error {
+	payload := map[string]interface{}{
+		"name": tenantName,
+	}
+	
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal tenant request: %w", err)
+	}
+	
+	url := cs.baseURL + "/api/v2/tenants"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create tenant request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	
+	resp, err := cs.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to create tenant: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		// Tenant might already exist, which is fine
+		log.Printf("Tenant creation response: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+	
+	return nil
+}
+
+// getCollectionURL returns the v2 API URL for a collection
+func (cs *ChromaService) getCollectionURL(collectionName string) string {
+	tenant := "default_tenant"
+	database := "default_database" 
+	return fmt.Sprintf("%s/api/v2/tenants/%s/databases/%s/collections/%s", cs.baseURL, tenant, database, collectionName)
+}
+
+// getCollectionsURL returns the v2 API URL for collections
+func (cs *ChromaService) getCollectionsURL() string {
+	tenant := "default_tenant"
+	database := "default_database"
+	return fmt.Sprintf("%s/api/v2/tenants/%s/databases/%s/collections", cs.baseURL, tenant, database)
+}
+
+// ensureDatabase creates a database if it doesn't exist
+func (cs *ChromaService) ensureDatabase(ctx context.Context, tenantName, databaseName string) error {
+	payload := map[string]interface{}{
+		"name": databaseName,
+	}
+	
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal database request: %w", err)
+	}
+	
+	url := fmt.Sprintf("%s/api/v2/tenants/%s/databases", cs.baseURL, tenantName)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create database request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	
+	resp, err := cs.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to create database: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		// Database might already exist, which is fine
+		log.Printf("Database creation response: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+	
+	return nil
 }
 

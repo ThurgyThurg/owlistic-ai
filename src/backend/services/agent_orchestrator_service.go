@@ -2,9 +2,13 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
+
+	"owlistic-notes/owlistic/database"
+	"owlistic-notes/owlistic/models"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -118,6 +122,7 @@ type AgentOrchestrator struct {
 	reasoningAgent      *ReasoningAgentService
 	chatService         *ChatService
 	noteService         *NoteService
+	notebookService     *NotebookService
 	taskService         *TaskService
 	aiService           *AIService
 	activeExecutions    map[string]*ChainExecutionResult
@@ -141,6 +146,7 @@ func NewAgentOrchestrator(db *gorm.DB) *AgentOrchestrator {
 	// Initialize services
 	orchestrator.aiService = NewAIService(db)
 	orchestrator.noteService = NewNoteService().(*NoteService)
+	orchestrator.notebookService = NewNotebookService().(*NotebookService)
 	orchestrator.taskService = NewTaskService().(*TaskService)
 	orchestrator.reasoningAgent = NewReasoningAgentService(db, orchestrator.aiService, orchestrator.noteService)
 	orchestrator.chatService = NewChatService(db, orchestrator.aiService, orchestrator.noteService)
@@ -265,6 +271,17 @@ func (o *AgentOrchestrator) ExecuteChain(ctx context.Context, req ChainExecution
 
 	// Store final results
 	result.Results = chainData
+
+	// Save execution as notebook and notes if successful
+	if err == nil && req.UserID != uuid.Nil {
+		go func() {
+			if notebookID, noteIDs, saveErr := o.saveExecutionAsNotebook(context.Background(), req.UserID, chain, result); saveErr != nil {
+				fmt.Printf("Failed to save execution as notebook: %v\n", saveErr)
+			} else {
+				fmt.Printf("Saved execution as notebook %s with %d notes\n", notebookID, len(noteIDs))
+			}
+		}()
+	}
 
 	// Clean up active execution
 	delete(o.activeExecutions, result.ID)
@@ -722,4 +739,275 @@ func (o *AgentOrchestrator) CreateCustomChain(chain *AgentChain) error {
 	// For now, just validate
 	
 	return nil
+}
+
+// saveExecutionAsNotebook saves an agent chain execution as a notebook with notes for each step
+func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID uuid.UUID, chain *AgentChain, result *ChainExecutionResult) (uuid.UUID, []uuid.UUID, error) {
+	// Create notebook for this execution
+	notebookTitle := fmt.Sprintf("Agent Chain: %s - %s", chain.Name, result.StartTime.Format("2006-01-02 15:04"))
+	notebookData := map[string]interface{}{
+		"name":        notebookTitle,
+		"description": fmt.Sprintf("Results from %s execution (%s)", chain.Name, result.Status),
+		"user_id":     userID.String(),
+	}
+
+	// Use database directly since we need to access the services
+	dbWrapper := &database.Database{DB: o.db}
+	notebook, err := o.notebookService.CreateNotebook(dbWrapper, notebookData)
+	if err != nil {
+		return uuid.Nil, nil, fmt.Errorf("failed to create notebook: %w", err)
+	}
+
+	var noteIDs []uuid.UUID
+
+	// Create overview note
+	overviewNoteData := map[string]interface{}{
+		"title":       "Execution Overview",
+		"user_id":     userID.String(),
+		"notebook_id": notebook.ID.String(),
+	}
+
+	overviewNote, err := o.noteService.CreateNote(dbWrapper, overviewNoteData)
+	if err != nil {
+		return notebook.ID, noteIDs, fmt.Errorf("failed to create overview note: %w", err)
+	}
+	noteIDs = append(noteIDs, overviewNote.ID)
+
+	// Add overview content blocks
+	blocks := []struct {
+		blockType string
+		content   map[string]interface{}
+		order     float64
+	}{
+		{
+			blockType: "header",
+			content: map[string]interface{}{
+				"text":  "Agent Chain Execution Results",
+				"level": 1,
+			},
+			order: 1000.0,
+		},
+		{
+			blockType: "text",
+			content: map[string]interface{}{
+				"text": fmt.Sprintf("**Chain:** %s\n**Mode:** %s\n**Status:** %s\n**Duration:** %.2fs\n**Execution ID:** %s",
+					chain.Name, chain.Mode, result.Status, 
+					result.EndTime.Sub(result.StartTime).Seconds(), result.ID),
+			},
+			order: 2000.0,
+		},
+	}
+
+	// Add error details if any
+	if len(result.Errors) > 0 {
+		var errorText strings.Builder
+		errorText.WriteString("**Errors encountered:**\n")
+		for _, err := range result.Errors {
+			errorText.WriteString(fmt.Sprintf("- %s (%s): %s\n", err.AgentName, err.AgentID, err.Error))
+		}
+		
+		blocks = append(blocks, struct {
+			blockType string
+			content   map[string]interface{}
+			order     float64
+		}{
+			blockType: "text",
+			content: map[string]interface{}{
+				"text": errorText.String(),
+			},
+			order: 3000.0,
+		})
+	}
+
+	// Create overview blocks
+	for _, block := range blocks {
+		blockModel := models.Block{
+			ID:      uuid.New(),
+			UserID:  userID,
+			NoteID:  overviewNote.ID,
+			Type:    block.blockType,
+			Order:   block.order,
+			Content: block.content,
+			Metadata: models.BlockMetadata{},
+		}
+		o.db.Create(&blockModel)
+	}
+
+	// Create individual notes for each agent execution
+	for i, log := range result.ExecutionLog {
+		agentNoteData := map[string]interface{}{
+			"title":       fmt.Sprintf("Step %d: %s", i+1, log.AgentName),
+			"user_id":     userID.String(),
+			"notebook_id": notebook.ID.String(),
+		}
+
+		agentNote, err := o.noteService.CreateNote(dbWrapper, agentNoteData)
+		if err != nil {
+			fmt.Printf("Failed to create note for agent %s: %v\n", log.AgentName, err)
+			continue
+		}
+		noteIDs = append(noteIDs, agentNote.ID)
+
+		// Create blocks for agent execution details
+		agentBlocks := []struct {
+			blockType string
+			content   map[string]interface{}
+			order     float64
+		}{
+			{
+				blockType: "header",
+				content: map[string]interface{}{
+					"text":  fmt.Sprintf("Agent: %s", log.AgentName),
+					"level": 1,
+				},
+				order: 1000.0,
+			},
+			{
+				blockType: "text",
+				content: map[string]interface{}{
+					"text": fmt.Sprintf("**Status:** %s\n**Duration:** %.2fs\n**Agent ID:** %s",
+						log.Status, log.Duration, log.AgentID),
+				},
+				order: 2000.0,
+			},
+		}
+
+		// Add input details if available
+		if len(log.Input) > 0 {
+			inputJSON, _ := json.MarshalIndent(log.Input, "", "  ")
+			agentBlocks = append(agentBlocks, struct {
+				blockType string
+				content   map[string]interface{}
+				order     float64
+			}{
+				blockType: "header",
+				content: map[string]interface{}{
+					"text":  "Input Parameters",
+					"level": 2,
+				},
+				order: 3000.0,
+			})
+			agentBlocks = append(agentBlocks, struct {
+				blockType string
+				content   map[string]interface{}
+				order     float64
+			}{
+				blockType: "text",
+				content: map[string]interface{}{
+					"text": fmt.Sprintf("```json\n%s\n```", string(inputJSON)),
+				},
+				order: 3100.0,
+			})
+		}
+
+		// Add output details
+		agentBlocks = append(agentBlocks, struct {
+			blockType string
+			content   map[string]interface{}
+			order     float64
+		}{
+			blockType: "header",
+			content: map[string]interface{}{
+				"text":  "Output",
+				"level": 2,
+			},
+			order: 4000.0,
+		})
+
+		// Format output based on its type
+		var outputText string
+		if log.Status == "failed" {
+			outputText = fmt.Sprintf("**Error:** %v", log.Output)
+		} else {
+			if outputMap, ok := log.Output.(map[string]interface{}); ok {
+				if outputJSON, err := json.MarshalIndent(outputMap, "", "  "); err == nil {
+					outputText = fmt.Sprintf("```json\n%s\n```", string(outputJSON))
+				} else {
+					outputText = fmt.Sprintf("%v", log.Output)
+				}
+			} else {
+				outputText = fmt.Sprintf("%v", log.Output)
+			}
+		}
+
+		agentBlocks = append(agentBlocks, struct {
+			blockType string
+			content   map[string]interface{}
+			order     float64
+		}{
+			blockType: "text",
+			content: map[string]interface{}{
+				"text": outputText,
+			},
+			order: 4100.0,
+		})
+
+		// Create all blocks for this agent
+		for _, block := range agentBlocks {
+			blockModel := models.Block{
+				ID:      uuid.New(),
+				UserID:  userID,
+				NoteID:  agentNote.ID,
+				Type:    block.blockType,
+				Order:   block.order,
+				Content: block.content,
+				Metadata: models.BlockMetadata{},
+			}
+			o.db.Create(&blockModel)
+		}
+	}
+
+	// Create final results note if there are results
+	if len(result.Results) > 0 {
+		resultsNoteData := map[string]interface{}{
+			"title":       "Final Results",
+			"user_id":     userID.String(),
+			"notebook_id": notebook.ID.String(),
+		}
+
+		resultsNote, err := o.noteService.CreateNote(dbWrapper, resultsNoteData)
+		if err == nil {
+			noteIDs = append(noteIDs, resultsNote.ID)
+
+			// Add results content
+			resultsJSON, _ := json.MarshalIndent(result.Results, "", "  ")
+			
+			resultBlocks := []struct {
+				blockType string
+				content   map[string]interface{}
+				order     float64
+			}{
+				{
+					blockType: "header",
+					content: map[string]interface{}{
+						"text":  "Chain Results",
+						"level": 1,
+					},
+					order: 1000.0,
+				},
+				{
+					blockType: "text",
+					content: map[string]interface{}{
+						"text": fmt.Sprintf("```json\n%s\n```", string(resultsJSON)),
+					},
+					order: 2000.0,
+				},
+			}
+
+			for _, block := range resultBlocks {
+				blockModel := models.Block{
+					ID:      uuid.New(),
+					UserID:  userID,
+					NoteID:  resultsNote.ID,
+					Type:    block.blockType,
+					Order:   block.order,
+					Content: block.content,
+					Metadata: models.BlockMetadata{},
+				}
+				o.db.Create(&blockModel)
+			}
+		}
+	}
+
+	return notebook.ID, noteIDs, nil
 }
