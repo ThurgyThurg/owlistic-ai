@@ -274,8 +274,8 @@ func (ts *TelegramService) handleCalendarEvent(ctx context.Context, userID uuid.
 	request := CalendarEventRequest{
 		Title:       title,
 		Description: fmt.Sprintf("Created from Telegram: %s", messageText),
-		StartTime:   startTime,
-		EndTime:     endTime,
+		StartTime:   FlexibleTime{Time: startTime},
+		EndTime:     FlexibleTime{Time: endTime},
 		AllDay:      allDay,
 		CalendarID:  "primary", // Use primary calendar
 	}
