@@ -22,9 +22,17 @@ class CalendarService extends BaseService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         final List<dynamic> events = responseData['events'] ?? [];
-        return events.map((e) => CalendarEvent.fromJson(e)).toList();
+        return events.map((e) {
+          try {
+            return CalendarEvent.fromJson(e as Map<String, dynamic>);
+          } catch (error) {
+            logger.error('Error parsing calendar event: $e, error: $error');
+            // Return a placeholder event or skip this event
+            rethrow;
+          }
+        }).toList();
       } else {
-        throw Exception('Failed to load calendar events');
+        throw Exception('Failed to load calendar events: ${response.statusCode}');
       }
     } catch (e) {
       logger.error('Error fetching calendar events: $e');
