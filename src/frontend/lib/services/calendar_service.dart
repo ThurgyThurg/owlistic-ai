@@ -53,20 +53,36 @@ class CalendarService extends BaseService {
     String? taskId,
   }) async {
     try {
-      final response = await authenticatedPost(
-        '/api/v1/calendar/events',
-        {
+      final startTimeFormatted = startTime.toUtc().toIso8601String();
+      final endTimeFormatted = endTime.toUtc().toIso8601String();
+      
+      // Force add Z if not present for proper RFC3339 format
+      final startTimeFinal = startTimeFormatted.endsWith('Z') ? startTimeFormatted : '${startTimeFormatted}Z';
+      final endTimeFinal = endTimeFormatted.endsWith('Z') ? endTimeFormatted : '${endTimeFormatted}Z';
+      
+      logger.info('Original start_time: ${startTime.toString()}');
+      logger.info('UTC start_time: ${startTime.toUtc().toString()}');
+      logger.info('ISO8601 start_time: $startTimeFormatted');
+      logger.info('Final start_time: $startTimeFinal');
+      
+      final payload = {
           'title': title,
           'description': description,
-          'start_time': _formatRFC3339(startTime),
-          'end_time': _formatRFC3339(endTime),
+          'start_time': startTimeFinal,
+          'end_time': endTimeFinal,
           'all_day': allDay,
           'location': location,
           'time_zone': timeZone,
           'calendar_id': calendarId,
           'note_id': noteId,
           'task_id': taskId,
-        },
+        };
+      
+      logger.info('Calendar event payload: $payload');
+      
+      final response = await authenticatedPost(
+        '/api/v1/calendar/events',
+        payload,
       );
 
       if (response.statusCode == 201) {
