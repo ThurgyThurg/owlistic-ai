@@ -321,7 +321,14 @@ func (ai *AIService) AddNoteToChroma(ctx context.Context, note *models.Note, enh
 	documents := []string{document}
 	metadatas := []map[string]interface{}{metadata}
 	
-	return ai.chromaService.UpsertDocuments(ctx, NoteEmbeddingsCollection, ids, documents, metadatas)
+	log.Printf("Adding note %s to ChromaDB collection %s", note.ID, NoteEmbeddingsCollection)
+	if err := ai.chromaService.UpsertDocuments(ctx, NoteEmbeddingsCollection, ids, documents, metadatas); err != nil {
+		log.Printf("Failed to add note to ChromaDB: %v", err)
+		return err
+	}
+	
+	log.Printf("Successfully added note %s to ChromaDB", note.ID)
+	return nil
 }
 
 // findRelatedNotes finds notes similar to the given note using vector search

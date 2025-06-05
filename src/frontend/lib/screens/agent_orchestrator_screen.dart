@@ -506,18 +506,17 @@ class _AgentOrchestratorScreenState extends State<AgentOrchestratorScreen> {
 
   void _instantiateTemplate(ChainTemplate template) async {
     // Show parameter input dialog
+    final parameters = await _showTemplateParameterDialog(template);
+    
+    if (parameters == null) {
+      // User cancelled
+      return;
+    }
+
+    // Show loading indicator
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Creating chain from ${template.name} template...')),
     );
-    
-    // In a real app, this would show a form to fill template parameters
-    // For now, we'll use dummy data
-    final parameters = {
-      'name': '${template.name} - ${DateTime.now().millisecondsSinceEpoch}',
-      ...Map.fromEntries(
-        template.parameters.map((p) => MapEntry(p.name, 'Sample value')),
-      ),
-    };
 
     try {
       final chain = await _service.instantiateTemplate(template.id, parameters);
@@ -525,14 +524,140 @@ class _AgentOrchestratorScreenState extends State<AgentOrchestratorScreen> {
         await _loadData();
         setState(() => _selectedTab = 0); // Switch to chains tab
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chain created successfully!')),
+          const SnackBar(
+            content: Text('Chain created successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create chain: $e')),
+        SnackBar(
+          content: Text('Failed to create chain: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
+  }
+
+  Future<Map<String, dynamic>?> _showTemplateParameterDialog(ChainTemplate template) async {
+    final controllers = <String, TextEditingController>{};
+    
+    // Create controllers for each parameter
+    for (final param in template.parameters) {
+      controllers[param.name] = TextEditingController();
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('Configure ${template.name}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                template.description,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Chain name field
+              TextField(
+                controller: controllers['name'] ??= TextEditingController(
+                  text: '${template.name} - ${DateTime.now().toString().split(' ')[0]}',
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Chain Name *',
+                  hintText: 'Enter a name for this chain',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Dynamic parameter fields
+              ...template.parameters.map((param) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TextField(
+                  controller: controllers[param.name]!,
+                  decoration: InputDecoration(
+                    labelText: '${param.name} ${param.type == 'string' ? '*' : ''}',
+                    hintText: param.description,
+                    border: const OutlineInputBorder(),
+                    helperText: param.description,
+                    helperMaxLines: 2,
+                  ),
+                  maxLines: param.type == 'string' && param.description.contains('description') ? 3 : 1,
+                  keyboardType: param.type == 'number' ? TextInputType.number : TextInputType.text,
+                ),
+              )),
+              const SizedBox(height: 8),
+              Text(
+                '* Required fields',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Dispose controllers
+              for (final controller in controllers.values) {
+                controller.dispose();
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Validate required fields
+              final chainName = controllers['name']?.text.trim() ?? '';
+              if (chainName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Chain name is required'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+
+              // Collect all parameter values
+              final parameters = <String, dynamic>{
+                'name': chainName,
+              };
+              
+              for (final param in template.parameters) {
+                final value = controllers[param.name]?.text.trim() ?? '';
+                if (value.isNotEmpty) {
+                  if (param.type == 'number') {
+                    parameters[param.name] = int.tryParse(value) ?? value;
+                  } else {
+                    parameters[param.name] = value;
+                  }
+                }
+              }
+
+              // Dispose controllers
+              for (final controller in controllers.values) {
+                controller.dispose();
+              }
+
+              Navigator.of(context).pop(parameters);
+            },
+            child: const Text('Create Chain'),
+          ),
+        ],
+      ),
+    );
+
+    return result;
   }
 
   Color _getChainModeColor(String mode) {

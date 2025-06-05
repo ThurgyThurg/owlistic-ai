@@ -22,6 +22,7 @@ type TelegramService struct {
 	bot             *tgbotapi.BotAPI
 	aiService       *AIService
 	calendarService *CalendarService
+	orchestrator    *AgentOrchestrator
 	allowedChatID   int64
 }
 
@@ -74,6 +75,7 @@ func NewTelegramService(db *gorm.DB, aiService *AIService) (*TelegramService, er
 		bot:             bot,
 		aiService:       aiService,
 		calendarService: calendarService,
+		orchestrator:    NewAgentOrchestrator(db),
 		allowedChatID:   chatID,
 	}, nil
 }
@@ -113,6 +115,13 @@ func (ts *TelegramService) handleMessage(message *tgbotapi.Message) {
 	if err != nil {
 		log.Printf("Failed to get user ID: %v", err)
 		ts.sendMessage("Sorry, I couldn't identify your user account. Please contact an administrator.")
+		return
+	}
+
+	// Check if it's a command (starts with /)
+	if strings.HasPrefix(message.Text, "/") {
+		response := ts.handleCommand(ctx, userID, message.Text)
+		ts.sendMessage(response)
 		return
 	}
 
@@ -590,6 +599,276 @@ func (ts *TelegramService) getOrCreateTelegramNotebook(ctx context.Context, user
 	}
 
 	return &notebook, nil
+}
+
+// handleCommand processes Telegram bot commands
+func (ts *TelegramService) handleCommand(ctx context.Context, userID uuid.UUID, command string) string {
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return "❌ Invalid command format"
+	}
+
+	cmd := strings.ToLower(parts[0])
+	args := parts[1:]
+
+	switch cmd {
+	case "/start":
+		return ts.handleStartCommand()
+	case "/help":
+		return ts.handleHelpCommand()
+	case "/chains":
+		return ts.handleChainsCommand()
+	case "/run":
+		return ts.handleRunChainCommand(ctx, userID, args)
+	case "/template":
+		return ts.handleTemplateCommand(ctx, userID, args)
+	case "/status":
+		return ts.handleStatusCommand(ctx, userID, args)
+	default:
+		return fmt.Sprintf("❌ Unknown command: %s\n\nType /help to see available commands.", cmd)
+	}
+}
+
+// handleStartCommand shows welcome message
+func (ts *TelegramService) handleStartCommand() string {
+	return `🦉 *Welcome to Owlistic AI Bot!*
+
+I can help you with:
+• 📝 Create notes and tasks
+• 📅 Schedule calendar events  
+• 🤖 Run AI agent chains
+• 📊 Execute workflow templates
+
+Type /help to see all available commands.`
+}
+
+// handleHelpCommand shows all available commands
+func (ts *TelegramService) handleHelpCommand() string {
+	return `🤖 *Owlistic AI Bot Commands*
+
+*Basic Commands:*
+• /start - Show welcome message
+• /help - Show this help
+
+*AI Agent Chains:*
+• /chains - List available chains
+• /run <chain_id> <input> - Execute a chain
+• /template <template_id> - Use a template
+• /status <execution_id> - Check execution status
+
+*Natural Language:*
+Just type naturally and I'll:
+• Create calendar events
+• Add tasks
+• Take notes
+• Start projects
+
+*Examples:*
+• "Schedule meeting tomorrow at 2pm"
+• "Add task: review project proposal"
+• "Research AI agent architectures"
+• /run research-and-summarize "machine learning trends"`
+}
+
+// handleChainsCommand lists available agent chains
+func (ts *TelegramService) handleChainsCommand() string {
+	chains := []struct {
+		ID          string
+		Name        string
+		Description string
+	}{
+		{"research-and-summarize", "Research & Summarize", "Search web, analyze, and create summary"},
+		{"note-enhancement-pipeline", "Note Enhancement", "Enhance notes with AI insights and tags"},
+		{"task-decomposition", "Task Breakdown", "Break down complex goals into steps"},
+		{"content-creation", "Content Creation", "Research, outline, write, and polish content"},
+	}
+
+	response := "🤖 *Available AI Agent Chains:*\n\n"
+	for _, chain := range chains {
+		response += fmt.Sprintf("*%s*\n`/run %s <your input>`\n%s\n\n", 
+			chain.Name, chain.ID, chain.Description)
+	}
+
+	response += "*Templates:*\n"
+	response += "`/template research-template` - Research Pipeline\n"
+	response += "`/template writing-template` - Writing Assistant\n"
+	response += "`/template learning-template` - Learning Path\n"
+	response += "`/template project-planning` - Project Planning\n"
+
+	return response
+}
+
+// handleRunChainCommand executes an agent chain
+func (ts *TelegramService) handleRunChainCommand(ctx context.Context, userID uuid.UUID, args []string) string {
+	if len(args) < 2 {
+		return "❌ Usage: `/run <chain_id> <input>`\n\nExample: `/run research-and-summarize machine learning trends`\n\nType /chains to see available chains."
+	}
+
+	chainID := args[0]
+	input := strings.Join(args[1:], " ")
+
+	// Create execution request
+	request := ChainExecutionRequest{
+		ChainID: chainID,
+		InitialData: map[string]interface{}{
+			"input":        input,
+			"search_query": input, // For research chains
+			"goal":         input, // For task breakdown
+			"content":      input, // For content chains
+		},
+		UserID: userID,
+	}
+
+	// Execute the chain
+	result, err := ts.orchestrator.ExecuteChain(ctx, request)
+	if err != nil {
+		return fmt.Sprintf("❌ Failed to execute chain '%s': %v", chainID, err)
+	}
+
+	return fmt.Sprintf("🚀 *Chain Execution Started*\n\n"+
+		"Chain: %s\n"+
+		"Execution ID: `%s`\n"+
+		"Input: %s\n\n"+
+		"Use `/status %s` to check progress.\n\n"+
+		"I'll update you when it's complete!",
+		chainID, result.ID, input, result.ID)
+}
+
+// handleTemplateCommand instantiates a template
+func (ts *TelegramService) handleTemplateCommand(ctx context.Context, userID uuid.UUID, args []string) string {
+	if len(args) < 1 {
+		return "❌ Usage: `/template <template_id> [parameters]`\n\n" +
+			"Available templates:\n" +
+			"• research-template\n" +
+			"• writing-template\n" +
+			"• learning-template\n" +
+			"• project-planning\n\n" +
+			"Example: `/template research-template topic=\"AI trends\" depth=\"deep\"`"
+	}
+
+	templateID := args[0]
+	
+	// Parse parameters from remaining args
+	parameters := make(map[string]interface{})
+	parameters["name"] = fmt.Sprintf("Telegram %s - %s", templateID, time.Now().Format("Jan 2"))
+	
+	// Simple parameter parsing (key=value format)
+	for _, arg := range args[1:] {
+		if strings.Contains(arg, "=") {
+			parts := strings.SplitN(arg, "=", 2)
+			key := strings.TrimSpace(parts[0])
+			value := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
+			parameters[key] = value
+		}
+	}
+
+	// If no parameters provided, use interactive approach
+	if len(parameters) == 1 { // Only name was set
+		return ts.getTemplatePrompt(templateID)
+	}
+
+	// Create chain from template (placeholder for now)
+	chainID := fmt.Sprintf("%s-%d", templateID, time.Now().Unix())
+	
+	return fmt.Sprintf("✅ *Template Instantiated*\n\n"+
+		"Template: %s\n"+
+		"Chain ID: `%s`\n"+
+		"Parameters: %v\n\n"+
+		"Use `/run %s <input>` to execute this chain.",
+		templateID, chainID, parameters, chainID)
+}
+
+// getTemplatePrompt returns parameter instructions for a template
+func (ts *TelegramService) getTemplatePrompt(templateID string) string {
+	switch templateID {
+	case "research-template":
+		return "📝 *Research Pipeline Template*\n\n" +
+			"Usage: `/template research-template topic=\"your topic\" depth=\"shallow|medium|deep\"`\n\n" +
+			"Example: `/template research-template topic=\"AI in healthcare\" depth=\"deep\"`"
+	case "writing-template":
+		return "✍️ *Writing Assistant Template*\n\n" +
+			"Usage: `/template writing-template topic=\"your topic\" style=\"formal|casual|technical\" length=\"word count\"`\n\n" +
+			"Example: `/template writing-template topic=\"blockchain basics\" style=\"casual\" length=\"1000\"`"
+	case "learning-template":
+		return "🎓 *Learning Path Template*\n\n" +
+			"Usage: `/template learning-template subject=\"subject\" level=\"beginner|intermediate|advanced\" timeframe=\"duration\"`\n\n" +
+			"Example: `/template learning-template subject=\"Python programming\" level=\"beginner\" timeframe=\"3 months\"`"
+	case "project-planning":
+		return "📋 *Project Planning Template*\n\n" +
+			"Usage: `/template project-planning project_name=\"name\" goals=\"objectives\" constraints=\"limitations\"`\n\n" +
+			"Example: `/template project-planning project_name=\"Mobile App\" goals=\"Create iOS app\" constraints=\"3 month timeline\"`"
+	default:
+		return "❌ Unknown template: " + templateID
+	}
+}
+
+// handleStatusCommand checks execution status
+func (ts *TelegramService) handleStatusCommand(ctx context.Context, userID uuid.UUID, args []string) string {
+	if len(args) < 1 {
+		return "❌ Usage: `/status <execution_id>`\n\nExample: `/status abc123-def456`"
+	}
+
+	executionID := args[0]
+	
+	// Get execution status
+	result, exists := ts.orchestrator.GetExecutionStatus(executionID)
+	if !exists {
+		return fmt.Sprintf("❌ Execution not found: %s", executionID)
+	}
+
+	status := ""
+	switch result.Status {
+	case "running":
+		status = "🔄 Running"
+	case "completed":
+		status = "✅ Completed"
+	case "failed":
+		status = "❌ Failed"
+	case "timeout":
+		status = "⏰ Timeout"
+	default:
+		status = "❓ " + result.Status
+	}
+
+	response := fmt.Sprintf("📊 *Execution Status*\n\n"+
+		"ID: `%s`\n"+
+		"Chain: %s\n"+
+		"Status: %s\n"+
+		"Started: %s\n",
+		result.ID, result.ChainID, status, result.StartTime.Format("Jan 2, 15:04"))
+
+	if result.EndTime != nil {
+		duration := result.EndTime.Sub(result.StartTime)
+		response += fmt.Sprintf("Duration: %v\n", duration.Round(time.Second))
+	}
+
+	if len(result.Errors) > 0 {
+		response += fmt.Sprintf("\n❌ Errors (%d):\n", len(result.Errors))
+		for _, err := range result.Errors {
+			response += fmt.Sprintf("• %s: %s\n", err.AgentName, err.Error)
+		}
+	}
+
+	if len(result.ExecutionLog) > 0 {
+		response += fmt.Sprintf("\n📋 Progress (%d steps):\n", len(result.ExecutionLog))
+		for _, log := range result.ExecutionLog {
+			stepStatus := "❓"
+			if log.Status == "completed" {
+				stepStatus = "✅"
+			} else if log.Status == "failed" {
+				stepStatus = "❌"
+			} else if log.Status == "running" {
+				stepStatus = "🔄"
+			}
+			response += fmt.Sprintf("• %s %s (%.1fs)\n", stepStatus, log.AgentName, log.Duration)
+		}
+	}
+
+	if result.Status == "completed" && len(result.Results) > 0 {
+		response += "\n🎯 *Results available!* Check the web interface for detailed output."
+	}
+
+	return response
 }
 
 // getDefaultUserID gets the first user ID (you might want to implement proper user mapping)

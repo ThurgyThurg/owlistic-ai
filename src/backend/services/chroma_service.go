@@ -265,34 +265,58 @@ func (cs *ChromaService) UpdateDocuments(ctx context.Context, collectionName str
 
 // UpsertDocuments inserts or updates documents in a collection
 func (cs *ChromaService) UpsertDocuments(ctx context.Context, collectionName string, ids []string, documents []string, metadatas []map[string]interface{}) error {
-	payload := ChromaAddRequest{
-		IDs:       ids,
-		Documents: documents,
-		Metadatas: metadatas,
+	// Ensure collection exists first
+	if err := cs.GetOrCreateCollection(ctx, collectionName, nil); err != nil {
+		return fmt.Errorf("failed to ensure collection exists: %w", err)
 	}
 	
-	jsonData, err := json.Marshal(payload)
+	// Check which documents already exist
+	existingDocs, err := cs.GetDocuments(ctx, collectionName, ids)
 	if err != nil {
-		return fmt.Errorf("failed to marshal upsert request: %w", err)
+		// If get fails, assume none exist and try to add all
+		log.Printf("Failed to get existing documents (collection might be empty), trying to add all: %v", err)
+		return cs.AddDocuments(ctx, collectionName, ids, documents, metadatas)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections/"+collectionName+"/upsert", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	
-	resp, err := cs.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to upsert documents: %w", err)
-	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to upsert documents, status %d: %s", resp.StatusCode, string(body))
+	// Separate existing and new documents
+	existingIDsMap := make(map[string]bool)
+	for _, id := range existingDocs.IDs {
+		existingIDsMap[id] = true
 	}
 	
+	var newIDs, updateIDs []string
+	var newDocs, updateDocs []string
+	var newMetas, updateMetas []map[string]interface{}
+	
+	for i, id := range ids {
+		if existingIDsMap[id] {
+			updateIDs = append(updateIDs, id)
+			updateDocs = append(updateDocs, documents[i])
+			updateMetas = append(updateMetas, metadatas[i])
+		} else {
+			newIDs = append(newIDs, id)
+			newDocs = append(newDocs, documents[i])
+			newMetas = append(newMetas, metadatas[i])
+		}
+	}
+	
+	// Add new documents
+	if len(newIDs) > 0 {
+		log.Printf("Adding %d new documents to ChromaDB", len(newIDs))
+		if err := cs.AddDocuments(ctx, collectionName, newIDs, newDocs, newMetas); err != nil {
+			return fmt.Errorf("failed to add new documents: %w", err)
+		}
+	}
+	
+	// Update existing documents
+	if len(updateIDs) > 0 {
+		log.Printf("Updating %d existing documents in ChromaDB", len(updateIDs))
+		if err := cs.UpdateDocuments(ctx, collectionName, updateIDs, updateDocs, updateMetas); err != nil {
+			return fmt.Errorf("failed to update existing documents: %w", err)
+		}
+	}
+	
+	log.Printf("Successfully upserted %d documents (%d new, %d updated)", len(ids), len(newIDs), len(updateIDs))
 	return nil
 }
 
