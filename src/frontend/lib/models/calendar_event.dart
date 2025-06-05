@@ -45,6 +45,10 @@ class CalendarEvent {
 
   // Convenience getter for backward compatibility
   DateTime get date => startTime;
+  
+  // Convenience getters for local time display
+  DateTime get localStartTime => startTime.toLocal();
+  DateTime get localEndTime => endTime.toLocal();
 
   factory CalendarEvent.fromJson(Map<String, dynamic> json) {
     return CalendarEvent(

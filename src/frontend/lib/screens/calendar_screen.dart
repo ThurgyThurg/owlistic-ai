@@ -187,7 +187,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             leading: CircleAvatar(
               backgroundColor: Theme.of(context).primaryColor,
               child: Text(
-                DateFormat('HH:mm').format(event.date),
+                DateFormat('HH:mm').format(event.localStartTime),
                 style: const TextStyle(fontSize: 12, color: Colors.white),
               ),
             ),
@@ -325,8 +325,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   void _showEditEventDialog(CalendarEvent event) {
     final titleController = TextEditingController(text: event.title);
     final descriptionController = TextEditingController(text: event.description);
-    DateTime selectedDate = event.date;
-    TimeOfDay selectedTime = TimeOfDay.fromDateTime(event.date);
+    DateTime selectedDate = event.localStartTime;
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(event.localStartTime);
     
     showDialog(
       context: context,

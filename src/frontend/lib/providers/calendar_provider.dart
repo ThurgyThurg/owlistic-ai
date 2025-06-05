@@ -71,7 +71,7 @@ class CalendarNotifier extends StateNotifier<AsyncValue<List<CalendarEvent>>> {
     try {
       await _service.updateEvent(event);
       // Refresh events
-      await fetchEvents(event.date);
+      await fetchEvents(event.startTime);
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
     }

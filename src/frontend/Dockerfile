@@ -44,9 +44,6 @@ RUN flutter config --enable-web
 # Get Flutter packages
 RUN flutter pub get
 
-# Initialize web project (creates index.html if missing)
-RUN flutter create --platforms=web .
-
 # Build the web app with SERVER_URL and credentials passed as dart-define
 RUN flutter build web --release \
     --dart-define=SERVER_URL=${SERVER_URL} \
