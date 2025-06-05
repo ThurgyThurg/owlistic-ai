@@ -14,8 +14,8 @@ class CalendarService extends BaseService {
       final response = await authenticatedGet(
         '/api/v1/calendar/events',
         queryParameters: {
-          'start': startOfMonth.toIso8601String(),
-          'end': endOfMonth.toIso8601String(),
+          'start': startOfMonth.toUtc().toIso8601String(),
+          'end': endOfMonth.toUtc().toIso8601String(),
         },
       );
 
@@ -58,8 +58,8 @@ class CalendarService extends BaseService {
         {
           'title': title,
           'description': description,
-          'start_time': startTime.toIso8601String(),
-          'end_time': endTime.toIso8601String(),
+          'start_time': startTime.toUtc().toIso8601String(),
+          'end_time': endTime.toUtc().toIso8601String(),
           'all_day': allDay,
           'location': location,
           'time_zone': timeZone,
@@ -87,7 +87,8 @@ class CalendarService extends BaseService {
         {
           'title': event.title,
           'description': event.description,
-          'date': event.date.toIso8601String(),
+          'start_time': event.startTime.toUtc().toIso8601String(),
+          'end_time': event.endTime.toUtc().toIso8601String(),
         },
       );
 

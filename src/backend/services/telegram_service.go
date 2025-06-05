@@ -366,24 +366,24 @@ func (ts *TelegramService) parseEventDateTime(extractedData map[string]interface
 
 	// If no specific time was extracted, try to parse from duration
 	if startTime.IsZero() {
-		// Default to tomorrow at a reasonable time if no specific time
-		startTime = time.Date(now.Year(), now.Month(), now.Day()+1, 14, 0, 0, 0, now.Location())
+		// Default to tomorrow at a reasonable time if no specific time (use UTC for consistency)
+		startTime = time.Date(now.Year(), now.Month(), now.Day()+1, 14, 0, 0, 0, time.UTC)
 		
 		// Check for time indicators in the message
 		msg := strings.ToLower(messageText)
 		if strings.Contains(msg, "today") {
-			startTime = time.Date(now.Year(), now.Month(), now.Day(), 14, 0, 0, 0, now.Location())
+			startTime = time.Date(now.Year(), now.Month(), now.Day(), 14, 0, 0, 0, time.UTC)
 		} else if strings.Contains(msg, "tomorrow") {
-			startTime = time.Date(now.Year(), now.Month(), now.Day()+1, 14, 0, 0, 0, now.Location())
+			startTime = time.Date(now.Year(), now.Month(), now.Day()+1, 14, 0, 0, 0, time.UTC)
 		}
 		
 		// Try to extract time from common patterns
 		if strings.Contains(msg, "morning") {
-			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 9, 0, 0, 0, startTime.Location())
+			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 9, 0, 0, 0, time.UTC)
 		} else if strings.Contains(msg, "afternoon") {
-			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 14, 0, 0, 0, startTime.Location())
+			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 14, 0, 0, 0, time.UTC)
 		} else if strings.Contains(msg, "evening") {
-			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 18, 0, 0, 0, startTime.Location())
+			startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 18, 0, 0, 0, time.UTC)
 		}
 	}
 
