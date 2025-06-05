@@ -240,6 +240,7 @@ func (o *AgentOrchestrator) ExecuteChain(ctx context.Context, req ChainExecution
 	}
 
 	// Execute based on mode
+	fmt.Printf("Executing chain %s (%s) with %d agents in %s mode\n", chain.Name, chain.ID, len(chain.Agents), chain.Mode)
 	switch chain.Mode {
 	case ChainModeSequential:
 		err = o.executeSequential(ctxWithTimeout, chain, chainData, result)
@@ -256,8 +257,10 @@ func (o *AgentOrchestrator) ExecuteChain(ctx context.Context, req ChainExecution
 	result.EndTime = &endTime
 	if err != nil {
 		result.Status = "failed"
+		fmt.Printf("Chain %s failed: %v\n", chain.Name, err)
 	} else {
 		result.Status = "completed"
+		fmt.Printf("Chain %s completed successfully in %.2fs\n", chain.Name, endTime.Sub(result.StartTime).Seconds())
 	}
 
 	// Store final results
@@ -460,6 +463,11 @@ func (o *AgentOrchestrator) executeSingleAgent(ctx context.Context, agentDef Age
 	if err != nil {
 		log.Status = "failed"
 		log.Output = err.Error()
+		// Log the error for debugging
+		fmt.Printf("Agent %s (%s) failed: %v\n", agentDef.Name, agentDef.ID, err)
+	} else {
+		// Log successful execution
+		fmt.Printf("Agent %s (%s) completed successfully in %.2fs\n", agentDef.Name, agentDef.ID, duration)
 	}
 
 	return output, err

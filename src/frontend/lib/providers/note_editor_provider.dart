@@ -439,8 +439,9 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
       
       // Add to note blocks map
       _noteBlocksMap[noteId!] ??= [];
-      if (!_noteBlocksMap[noteId!]!.contains(block.id)) {
-        _noteBlocksMap[noteId!]!.add(block.id);
+      final noteBlocksList = _noteBlocksMap[noteId!];
+      if (noteBlocksList != null && !noteBlocksList.contains(block.id)) {
+        noteBlocksList.add(block.id);
       }
       
       // Remove from uncommitted nodes
@@ -736,8 +737,9 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
     
     // Update note blocks map
     _noteBlocksMap[block.noteId] ??= [];
-    if (!_noteBlocksMap[block.noteId]!.contains(block.id)) {
-      _noteBlocksMap[block.noteId]!.add(block.id);
+    final noteBlocksList = _noteBlocksMap[block.noteId];
+    if (noteBlocksList != null && !noteBlocksList.contains(block.id)) {
+      noteBlocksList.add(block.id);
     }
 
     _updateDocumentWithBlock(block);
@@ -788,8 +790,9 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
       // Add all blocks to maps, tracking which ones are actually new
       for (var block in blocksResult) {
         _blocks[block.id] = block;
-        if (!_noteBlocksMap[noteId]!.contains(block.id)) {
-          _noteBlocksMap[noteId]!.add(block.id);
+        final noteBlocksList = _noteBlocksMap[noteId];
+        if (noteBlocksList != null && !noteBlocksList.contains(block.id)) {
+          noteBlocksList.add(block.id);
           newBlockCount++;
         }
       }
@@ -838,8 +841,9 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
       // Update note blocks map
       final String blockNoteId = block.noteId;
       _noteBlocksMap[blockNoteId] ??= [];
-      if (!_noteBlocksMap[blockNoteId]!.contains(blockId)) {
-        _noteBlocksMap[blockNoteId]!.add(blockId);
+      final noteBlocksList = _noteBlocksMap[blockNoteId];
+      if (noteBlocksList != null && !noteBlocksList.contains(blockId)) {
+        noteBlocksList.add(blockId);
       }
       
       // Subscribe to this block
@@ -1218,8 +1222,9 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
       // Update note blocks map
       final noteId = block.noteId;
       _noteBlocksMap[noteId] ??= [];
-      if (!_noteBlocksMap[noteId]!.contains(block.id)) {
-        _noteBlocksMap[noteId]!.add(block.id);
+      final noteBlocksList = _noteBlocksMap[noteId];
+      if (noteBlocksList != null && !noteBlocksList.contains(block.id)) {
+        noteBlocksList.add(block.id);
       }
     }
     
@@ -1264,8 +1269,9 @@ class NoteEditorProvider with ChangeNotifier implements NoteEditorViewModel {
       // Update note blocks map
       final noteId = block.noteId;
       _noteBlocksMap[noteId] ??= [];
-      if (!_noteBlocksMap[noteId]!.contains(block.id)) {
-        _noteBlocksMap[noteId]!.add(block.id);
+      final noteBlocksList = _noteBlocksMap[noteId];
+      if (noteBlocksList != null && !noteBlocksList.contains(block.id)) {
+        noteBlocksList.add(block.id);
       }
     }
     

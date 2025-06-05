@@ -80,6 +80,7 @@ func NewAIService(db *gorm.DB) *AIService {
 	ctx := context.Background()
 	if err := service.initializeChromaCollection(ctx); err != nil {
 		log.Printf("Warning: Failed to initialize ChromaDB collection: %v", err)
+		log.Printf("ChromaDB features will be disabled. AI enhancement will work without vector search.")
 		// Continue anyway - we'll handle errors gracefully
 	}
 	
@@ -248,6 +249,7 @@ func (ai *AIService) ProcessNoteWithAI(ctx context.Context, noteID uuid.UUID) er
 	// Add to ChromaDB for vector search
 	if err := ai.AddNoteToChroma(ctx, &note, &enhancedNote); err != nil {
 		log.Printf("Failed to add note to ChromaDB: %v", err)
+		log.Printf("Vector search will not be available for this note, but all other AI features will work")
 		// Don't fail the whole operation if ChromaDB fails
 	}
 

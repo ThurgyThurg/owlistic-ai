@@ -303,17 +303,36 @@ func (w *WebSearchAgent) Execute(ctx context.Context, input map[string]interface
 		maxResults = m
 	}
 
-	// Perform web search
-	searchPrompt := fmt.Sprintf("Search the web for: %s\nReturn top %d relevant results with titles, URLs, and summaries.", query, maxResults)
-	
-	response, err := w.aiService.PerformWebSearch(ctx, searchPrompt)
+	// Try Perplexica first, fall back to AI synthesis if not available
+	response, err := w.aiService.PerformWebSearch(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to perform web search: %w", err)
+		// Fallback: Generate a synthetic response based on AI knowledge
+		fallbackPrompt := fmt.Sprintf(`Based on your knowledge, provide a comprehensive response about: %s
+
+Please structure your response as if it were search results, including:
+1. A main answer/summary
+2. Key points and facts
+3. Relevant context and background information
+
+Note: This response is generated from AI knowledge, not live web search.`, query)
+		
+		fallbackResponse, fallbackErr := w.aiService.GenerateResponse(ctx, fallbackPrompt, nil)
+		if fallbackErr != nil {
+			return nil, fmt.Errorf("both web search and fallback failed: web search error: %w, fallback error: %w", err, fallbackErr)
+		}
+		
+		return map[string]interface{}{
+			"query":   query,
+			"results": fallbackResponse,
+			"source":  "ai_knowledge",
+			"note":    "Generated from AI knowledge since web search is unavailable",
+		}, nil
 	}
 
 	return map[string]interface{}{
 		"query":   query,
 		"results": response,
+		"source":  "web_search",
 	}, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -82,7 +83,12 @@ type ChromaGetResponse struct {
 // NewChromaService creates a new ChromaDB service
 func NewChromaService(baseURL string, db *gorm.DB) *ChromaService {
 	if baseURL == "" {
-		baseURL = "http://chroma:8000"
+		// Try different ChromaDB configurations
+		if chromaURL := os.Getenv("CHROMA_BASE_URL"); chromaURL != "" {
+			baseURL = chromaURL
+		} else {
+			baseURL = "http://192.168.0.11:8000" // Default to external ChromaDB server
+		}
 	}
 	
 	return &ChromaService{
@@ -132,7 +138,7 @@ func (cs *ChromaService) CreateCollection(ctx context.Context, name string, conf
 		return fmt.Errorf("failed to marshal create collection request: %w", err)
 	}
 	
-	url := cs.baseURL + "/collections"
+	url := cs.baseURL + "/api/v1/collections"
 	log.Printf("Creating ChromaDB collection at URL: %s", url)
 	
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
