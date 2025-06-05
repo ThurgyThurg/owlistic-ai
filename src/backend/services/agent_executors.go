@@ -140,7 +140,7 @@ func (n *NoteAnalyzerAgent) analyzeNote(ctx context.Context, input map[string]in
 		return nil, fmt.Errorf("missing or invalid 'note_id' parameter")
 	}
 
-	// Get note content - need to access database directly for now  
+	// Get note content - need to access database directly for now
 	var note models.Note
 	err := n.db.Where("id = ?", noteID).Preload("Blocks").First(&note).Error
 	if err != nil {
@@ -201,7 +201,7 @@ func (n *NoteAnalyzerAgent) extractEntities(ctx context.Context, input map[strin
 		return nil, fmt.Errorf("missing or invalid 'note_id' parameter")
 	}
 
-	// Get note content - need to access database directly for now  
+	// Get note content - need to access database directly for now
 	var note models.Note
 	err := n.db.Where("id = ?", noteID).Preload("Blocks").First(&note).Error
 	if err != nil {
@@ -302,9 +302,12 @@ func (w *WebSearchAgent) Execute(ctx context.Context, input map[string]interface
 	if m, ok := input["max_results"].(int); ok {
 		maxResults = m
 	}
-
+	// Perform web search
+	searchPrompt := fmt.Sprintf("Search the web for: %s\nReturn top %d relevant results with titles, URLs, and summaries.", query, maxResults)
+	
+	
 	// Try Perplexica first, fall back to AI synthesis if not available
-	response, err := w.aiService.PerformWebSearch(ctx, query)
+	response, err := w.aiService.PerformWebSearch(ctx, searchPrompt)
 	if err != nil {
 		// Fallback: Generate a synthetic response based on AI knowledge
 		fallbackPrompt := fmt.Sprintf(`Based on your knowledge, provide a comprehensive response about: %s
@@ -315,12 +318,12 @@ Please structure your response as if it were search results, including:
 3. Relevant context and background information
 
 Note: This response is generated from AI knowledge, not live web search.`, query)
-		
+
 		fallbackResponse, fallbackErr := w.aiService.GenerateResponse(ctx, fallbackPrompt, nil)
 		if fallbackErr != nil {
 			return nil, fmt.Errorf("both web search and fallback failed: web search error: %w, fallback error: %w", err, fallbackErr)
 		}
-		
+
 		return map[string]interface{}{
 			"query":   query,
 			"results": fallbackResponse,
@@ -385,8 +388,8 @@ func (s *SummarizerAgent) Execute(ctx context.Context, input map[string]interfac
 	}
 
 	return map[string]interface{}{
-		"summary":        response,
-		"style":          style,
+		"summary":         response,
+		"style":           style,
 		"original_length": len(content),
 		"summary_length":  len(response),
 	}, nil
