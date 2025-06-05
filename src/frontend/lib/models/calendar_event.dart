@@ -76,8 +76,8 @@ class CalendarEvent {
       'id': id,
       'title': title,
       'description': description,
-      'start_time': startTime.toUtc().toIso8601String(),
-      'end_time': endTime.toUtc().toIso8601String(),
+      'start_time': _formatRFC3339(startTime),
+      'end_time': _formatRFC3339(endTime),
       'all_day': allDay,
       'location': location,
       'time_zone': timeZone,
@@ -91,8 +91,8 @@ class CalendarEvent {
       'task_id': taskId,
       'user_id': userId,
       'metadata': metadata,
-      'created_at': createdAt.toUtc().toIso8601String(),
-      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'created_at': _formatRFC3339(createdAt),
+      'updated_at': _formatRFC3339(updatedAt),
     };
   }
 
@@ -140,5 +140,13 @@ class CalendarEvent {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+
+  // Helper method to ensure proper RFC3339 format with timezone
+  String _formatRFC3339(DateTime dateTime) {
+    final utcTime = dateTime.toUtc();
+    final iso8601 = utcTime.toIso8601String();
+    // Ensure the string ends with 'Z' for UTC timezone
+    return iso8601.endsWith('Z') ? iso8601 : '${iso8601}Z';
   }
 }

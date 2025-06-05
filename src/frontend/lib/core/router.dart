@@ -11,6 +11,7 @@ import 'package:owlistic/screens/trash_screen.dart';
 import 'package:owlistic/screens/user_profile_screen.dart';
 import 'package:owlistic/screens/settings_screen.dart';
 import 'package:owlistic/screens/ai_dashboard_screen.dart';
+import 'package:owlistic/screens/agent_orchestrator_screen.dart';
 import 'package:owlistic/screens/zettelkasten_screen.dart';
 import 'package:owlistic/screens/calendar_screen.dart';
 import 'package:owlistic/utils/logger.dart';
@@ -141,6 +142,10 @@ class AppRouter {
         GoRoute(
           path: '/ai-dashboard',
           builder: (context, state) => const AIDashboardScreen(),
+        ),
+        GoRoute(
+          path: '/agent-orchestrator',
+          builder: (context, state) => const AgentOrchestratorScreen(),
         ),
         GoRoute(
           path: '/zettelkasten',

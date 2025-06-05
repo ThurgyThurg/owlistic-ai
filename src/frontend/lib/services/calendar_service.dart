@@ -14,8 +14,8 @@ class CalendarService extends BaseService {
       final response = await authenticatedGet(
         '/api/v1/calendar/events',
         queryParameters: {
-          'start': startOfMonth.toUtc().toIso8601String(),
-          'end': endOfMonth.toUtc().toIso8601String(),
+          'start': _formatRFC3339(startOfMonth),
+          'end': _formatRFC3339(endOfMonth),
         },
       );
 
@@ -58,8 +58,8 @@ class CalendarService extends BaseService {
         {
           'title': title,
           'description': description,
-          'start_time': startTime.toUtc().toIso8601String(),
-          'end_time': endTime.toUtc().toIso8601String(),
+          'start_time': _formatRFC3339(startTime),
+          'end_time': _formatRFC3339(endTime),
           'all_day': allDay,
           'location': location,
           'time_zone': timeZone,
@@ -87,8 +87,8 @@ class CalendarService extends BaseService {
         {
           'title': event.title,
           'description': event.description,
-          'start_time': event.startTime.toUtc().toIso8601String(),
-          'end_time': event.endTime.toUtc().toIso8601String(),
+          'start_time': _formatRFC3339(event.startTime),
+          'end_time': _formatRFC3339(event.endTime),
         },
       );
 
@@ -254,5 +254,13 @@ class CalendarService extends BaseService {
       logger.error('Error getting sync status: $e');
       throw e;
     }
+  }
+
+  // Helper method to ensure proper RFC3339 format with timezone
+  String _formatRFC3339(DateTime dateTime) {
+    final utcTime = dateTime.toUtc();
+    final iso8601 = utcTime.toIso8601String();
+    // Ensure the string ends with 'Z' for UTC timezone
+    return iso8601.endsWith('Z') ? iso8601 : '${iso8601}Z';
   }
 }

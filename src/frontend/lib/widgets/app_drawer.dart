@@ -75,6 +75,11 @@ class SidebarDrawer extends StatelessWidget {
             onTap: () => _navigateTo(context, '/ai-dashboard'),
           ),
           ListTile(
+            leading: const Icon(Icons.precision_manufacturing),
+            title: const Text('Agent Orchestrator'),
+            onTap: () => _navigateTo(context, '/agent-orchestrator'),
+          ),
+          ListTile(
             leading: const Icon(Icons.account_tree),
             title: const Text('Knowledge Graph'),
             onTap: () => _navigateTo(context, '/zettelkasten'),

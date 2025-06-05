@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:owlistic/services/agent_orchestrator_service.dart';
 import 'package:owlistic/widgets/app_bar_common.dart';
+import 'package:owlistic/widgets/app_drawer.dart';
 import 'package:owlistic/widgets/card_container.dart';
 import 'package:owlistic/widgets/empty_state.dart';
 import 'package:owlistic/utils/logger.dart';
@@ -65,6 +66,7 @@ class _AgentOrchestratorScreenState extends State<AgentOrchestratorScreen> {
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
         showBackButton: false,
       ),
+      drawer: const SidebarDrawer(),
       body: Column(
         children: [
           // Tab bar
