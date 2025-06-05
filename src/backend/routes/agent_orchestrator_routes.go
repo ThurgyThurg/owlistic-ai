@@ -50,21 +50,14 @@ func (aor *AgentOrchestratorRoutes) RegisterRoutes(router *gin.RouterGroup) {
 
 // executeChain starts execution of an agent chain
 func (aor *AgentOrchestratorRoutes) executeChain(c *gin.Context) {
-	// For single-user mode, use default user ID if not authenticated
-	userID, exists := c.Get("userID")
-	if !exists {
-		// For single-user systems, use the first user in the database
-		userID = getSingleUserIDFromDB(aor.db)
-	}
-
 	var req services.ChainExecutionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Set user ID
-	req.UserID = userID.(uuid.UUID)
+	// Set user ID safely
+	req.UserID = getUserUUID(c, aor.db)
 
 	// Execute chain
 	result, err := aor.orchestrator.ExecuteChain(c.Request.Context(), req)
@@ -163,21 +156,14 @@ func (aor *AgentOrchestratorRoutes) getChain(c *gin.Context) {
 
 // createChain creates a new agent chain
 func (aor *AgentOrchestratorRoutes) createChain(c *gin.Context) {
-	// For single-user mode, use default user ID if not authenticated
-	userID, exists := c.Get("userID")
-	if !exists {
-		// For single-user systems, use the first user in the database
-		userID = getSingleUserIDFromDB(aor.db)
-	}
-
 	var chain services.AgentChain
 	if err := c.ShouldBindJSON(&chain); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Set user ID
-	chain.UserID = userID.(uuid.UUID)
+	// Set user ID safely
+	chain.UserID = getUserUUID(c, aor.db)
 
 	// Create chain
 	if err := aor.orchestrator.CreateCustomChain(&chain); err != nil {
@@ -353,10 +339,26 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 	templateID := c.Param("id")
 	
 	// For single-user mode, use default user ID if not authenticated
-	userID, exists := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
+	var userUUID uuid.UUID
 	if !exists {
 		// For single-user systems, use the first user in the database
-		userID = getSingleUserIDFromDB(aor.db)
+		userUUID = getSingleUserIDFromDB(aor.db)
+	} else {
+		// Safely convert userID to UUID
+		switch v := userIDInterface.(type) {
+		case uuid.UUID:
+			userUUID = v
+		case string:
+			if parsed, err := uuid.Parse(v); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+				return
+			} else {
+				userUUID = parsed
+			}
+		default:
+			userUUID = getSingleUserIDFromDB(aor.db)
+		}
 	}
 	
 	var params map[string]interface{}
@@ -376,7 +378,7 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 			Name:        "Research: " + getStringParam(params, "topic", "Unknown Topic"),
 			Description: "Research pipeline for comprehensive topic analysis",
 			Mode:        services.ChainModeSequential,
-			UserID:      userID.(uuid.UUID),
+			UserID:      userUUID,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 			Timeout:     300,
@@ -432,7 +434,7 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 			Name:        "Writing: " + getStringParam(params, "topic", "Unknown Topic"),
 			Description: "Writing assistant for content creation",
 			Mode:        services.ChainModeSequential,
-			UserID:      userID.(uuid.UUID),
+			UserID:      userUUID,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 			Timeout:     600,
@@ -501,7 +503,7 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 			Name:        "Learning Path: " + getStringParam(params, "subject", "Unknown Subject"),
 			Description: "Create structured learning path",
 			Mode:        services.ChainModeSequential,
-			UserID:      userID.(uuid.UUID),
+			UserID:      userUUID,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 			Timeout:     300,
@@ -564,7 +566,7 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 			Name:        "Project: " + getStringParam(params, "project_name", "Unnamed Project"),
 			Description: "Project planning and organization",
 			Mode:        services.ChainModeSequential,
-			UserID:      userID.(uuid.UUID),
+			UserID:      userUUID,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 			Timeout:     600,
@@ -643,7 +645,7 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 		req := services.ChainExecutionRequest{
 			ChainID:     chain.ID,
 			InitialData: initialData,
-			UserID:      userID.(uuid.UUID),
+			UserID:      userUUID,
 		}
 		
 		result, err := aor.orchestrator.ExecuteChain(c.Request.Context(), req)
@@ -715,4 +717,25 @@ func getSingleUserIDFromDB(db *gorm.DB) uuid.UUID {
 		return singleUserUUID
 	}
 	return user.ID
+}
+
+// getUserUUID safely extracts and converts user ID from gin context
+func getUserUUID(c *gin.Context, db *gorm.DB) uuid.UUID {
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		return getSingleUserIDFromDB(db)
+	}
+	
+	switch v := userIDInterface.(type) {
+	case uuid.UUID:
+		return v
+	case string:
+		if parsed, err := uuid.Parse(v); err != nil {
+			return getSingleUserIDFromDB(db)
+		} else {
+			return parsed
+		}
+	default:
+		return getSingleUserIDFromDB(db)
+	}
 }
