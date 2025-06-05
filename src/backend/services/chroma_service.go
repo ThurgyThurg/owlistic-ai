@@ -132,20 +132,26 @@ func (cs *ChromaService) CreateCollection(ctx context.Context, name string, conf
 		return fmt.Errorf("failed to marshal create collection request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections", bytes.NewBuffer(jsonData))
+	url := cs.baseURL + "/collections"
+	log.Printf("Creating ChromaDB collection at URL: %s", url)
+	
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	
+	log.Printf("Sending request with payload: %s", string(jsonData))
 	resp, err := cs.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to create collection: %w", err)
 	}
 	defer resp.Body.Close()
 	
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("ChromaDB response: status=%d, body=%s", resp.StatusCode, string(body))
+	
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("failed to create collection, status %d: %s", resp.StatusCode, string(body))
 	}
 	
@@ -156,7 +162,7 @@ func (cs *ChromaService) CreateCollection(ctx context.Context, name string, conf
 // GetOrCreateCollection gets an existing collection or creates it if it doesn't exist
 func (cs *ChromaService) GetOrCreateCollection(ctx context.Context, name string, config *ChromaConfiguration) error {
 	// First try to get the collection
-	req, err := http.NewRequestWithContext(ctx, "GET", cs.baseURL+"/api/v1/collections/"+name, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", cs.baseURL+"/collections/"+name, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -178,7 +184,7 @@ func (cs *ChromaService) GetOrCreateCollection(ctx context.Context, name string,
 
 // DeleteCollection deletes a collection and all its data
 func (cs *ChromaService) DeleteCollection(ctx context.Context, name string) error {
-	req, err := http.NewRequestWithContext(ctx, "DELETE", cs.baseURL+"/api/v1/collections/"+name, nil)
+	req, err := http.NewRequestWithContext(ctx, "DELETE", cs.baseURL+"/collections/"+name, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -210,7 +216,7 @@ func (cs *ChromaService) AddDocuments(ctx context.Context, collectionName string
 		return fmt.Errorf("failed to marshal add request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections/"+collectionName+"/add", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/add", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -243,7 +249,7 @@ func (cs *ChromaService) UpdateDocuments(ctx context.Context, collectionName str
 		return fmt.Errorf("failed to marshal update request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections/"+collectionName+"/update", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/update", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -331,7 +337,7 @@ func (cs *ChromaService) DeleteDocuments(ctx context.Context, collectionName str
 		return fmt.Errorf("failed to marshal delete request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections/"+collectionName+"/delete", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/delete", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -365,7 +371,7 @@ func (cs *ChromaService) QueryByText(ctx context.Context, collectionName string,
 		return nil, fmt.Errorf("failed to marshal query request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections/"+collectionName+"/query", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/query", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -404,7 +410,7 @@ func (cs *ChromaService) QueryByEmbedding(ctx context.Context, collectionName st
 		return nil, fmt.Errorf("failed to marshal query request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections/"+collectionName+"/query", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/query", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -441,7 +447,7 @@ func (cs *ChromaService) GetDocuments(ctx context.Context, collectionName string
 		return nil, fmt.Errorf("failed to marshal get request: %w", err)
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/api/v1/collections/"+collectionName+"/get", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", cs.baseURL+"/collections/"+collectionName+"/get", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -468,7 +474,7 @@ func (cs *ChromaService) GetDocuments(ctx context.Context, collectionName string
 
 // CountDocuments returns the number of documents in a collection
 func (cs *ChromaService) CountDocuments(ctx context.Context, collectionName string) (int, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", cs.baseURL+"/api/v1/collections/"+collectionName+"/count", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", cs.baseURL+"/collections/"+collectionName+"/count", nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create request: %w", err)
 	}
