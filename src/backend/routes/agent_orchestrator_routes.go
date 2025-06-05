@@ -338,34 +338,17 @@ func (aor *AgentOrchestratorRoutes) getChainTemplates(c *gin.Context) {
 func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 	templateID := c.Param("id")
 	
-	// For single-user mode, use default user ID if not authenticated
-	userIDInterface, exists := c.Get("userID")
-	var userUUID uuid.UUID
-	if !exists {
-		// For single-user systems, use the first user in the database
-		userUUID = getSingleUserIDFromDB(aor.db)
-	} else {
-		// Safely convert userID to UUID
-		switch v := userIDInterface.(type) {
-		case uuid.UUID:
-			userUUID = v
-		case string:
-			if parsed, err := uuid.Parse(v); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-				return
-			} else {
-				userUUID = parsed
-			}
-		default:
-			userUUID = getSingleUserIDFromDB(aor.db)
-		}
-	}
+	// Get user UUID safely
+	userUUID := getUserUUID(c, aor.db)
+	fmt.Printf("Using user UUID: %s for template instantiation\n", userUUID)
 	
 	var params map[string]interface{}
 	if err := c.ShouldBindJSON(&params); err != nil {
+		fmt.Printf("Failed to bind JSON parameters: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	fmt.Printf("Template %s instantiation parameters: %+v\n", templateID, params)
 	
 	// Create chain based on template
 	var chain *services.AgentChain
@@ -632,16 +615,20 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 	}
 	
 	// Create the chain
+	fmt.Printf("Creating chain: %s\n", chain.Name)
 	if err := aor.orchestrator.CreateCustomChain(chain); err != nil {
+		fmt.Printf("Failed to create chain: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	fmt.Printf("Chain created successfully: %s\n", chain.ID)
 	
 	// Check if we should execute immediately
 	executeNow := getBoolParam(params, "execute", true)
 	
 	if executeNow {
 		// Execute the chain
+		fmt.Printf("Executing chain immediately with initial data: %+v\n", initialData)
 		req := services.ChainExecutionRequest{
 			ChainID:     chain.ID,
 			InitialData: initialData,
@@ -650,6 +637,7 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 		
 		result, err := aor.orchestrator.ExecuteChain(c.Request.Context(), req)
 		if err != nil {
+			fmt.Printf("Chain execution failed: %v\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   err.Error(),
 				"chain":   chain,
@@ -657,6 +645,7 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 			})
 			return
 		}
+		fmt.Printf("Chain executed successfully: %s\n", result.ID)
 		
 		c.JSON(http.StatusCreated, gin.H{
 			"chain":     chain,
@@ -712,10 +701,13 @@ func getSingleUserIDFromDB(db *gorm.DB) uuid.UUID {
 		ID uuid.UUID `gorm:"column:id"`
 	}
 	if err := db.Table("users").First(&user).Error; err != nil {
+		fmt.Printf("Failed to get user from database: %v\n", err)
 		// Return the intended single-user UUID as fallback
 		singleUserUUID, _ := uuid.Parse("00000000-0000-0000-0000-000000000001")
+		fmt.Printf("Using fallback user UUID: %s\n", singleUserUUID)
 		return singleUserUUID
 	}
+	fmt.Printf("Found user in database: %s\n", user.ID)
 	return user.ID
 }
 
@@ -723,19 +715,24 @@ func getSingleUserIDFromDB(db *gorm.DB) uuid.UUID {
 func getUserUUID(c *gin.Context, db *gorm.DB) uuid.UUID {
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
+		fmt.Printf("No userID in context, getting from database\n")
 		return getSingleUserIDFromDB(db)
 	}
 	
 	switch v := userIDInterface.(type) {
 	case uuid.UUID:
+		fmt.Printf("Found UUID in context: %s\n", v)
 		return v
 	case string:
 		if parsed, err := uuid.Parse(v); err != nil {
+			fmt.Printf("Failed to parse user ID string '%s': %v\n", v, err)
 			return getSingleUserIDFromDB(db)
 		} else {
+			fmt.Printf("Parsed user ID from string: %s\n", parsed)
 			return parsed
 		}
 	default:
+		fmt.Printf("Unknown user ID type: %T, value: %v\n", v, v)
 		return getSingleUserIDFromDB(db)
 	}
 }
