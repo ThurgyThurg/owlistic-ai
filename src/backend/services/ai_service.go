@@ -635,6 +635,20 @@ func (ai *AIService) PerformWebSearch(ctx context.Context, query string) (interf
 	return result, nil
 }
 
+// PerformAdvancedWebSearch performs a web search with specific focus and optimization modes
+func (ai *AIService) PerformAdvancedWebSearch(ctx context.Context, query, focusMode, optimizationMode string) (interface{}, error) {
+	if !ai.perplexicaService.IsEnabled() {
+		return nil, fmt.Errorf("perplexica service is not enabled")
+	}
+
+	result, err := ai.perplexicaService.Search(ctx, query, focusMode, optimizationMode)
+	if err != nil {
+		return nil, fmt.Errorf("advanced web search failed: %w", err)
+	}
+
+	return result, nil
+}
+
 // SearchWithPerplexica performs a search using the Perplexica service
 func (ai *AIService) SearchWithPerplexica(ctx context.Context, userID uuid.UUID, query string, focusMode string, context []string) (*PerplexicaSearchResult, error) {
 	if !ai.perplexicaService.IsEnabled() {

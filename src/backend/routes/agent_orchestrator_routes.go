@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -292,10 +293,12 @@ func (aor *AgentOrchestratorRoutes) getChainTemplates(c *gin.Context) {
 		{
 			"id":          "research-template",
 			"name":        "Research Pipeline",
-			"description": "Template for researching a topic comprehensively",
+			"description": "Template for researching a topic with configurable depth: shallow (3 results, 3min), medium (5 results, 5min), deep (10 results, 10min)",
 			"parameters": []map[string]string{
 				{"name": "topic", "type": "string", "description": "The topic to research"},
-				{"name": "depth", "type": "string", "description": "Research depth: shallow, medium, deep"},
+				{"name": "depth", "type": "string", "description": "Research depth: shallow (quick analysis), medium (balanced), deep (comprehensive analysis)"},
+				{"name": "focus_mode", "type": "string", "description": "Optional: Perplexica focus mode (webSearch, academicSearch, youtubeSearch, redditSearch, newsSearch, etc.)"},
+				{"name": "optimization_mode", "type": "string", "description": "Optional: Search optimization (speed, balanced, quality)"},
 			},
 		},
 		{
@@ -355,21 +358,82 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 	
 	switch templateID {
 	case "research-template":
+		// Configure parameters based on research depth
+		depth := getStringParam(params, "depth", "medium")
+		focusMode := getStringParam(params, "focus_mode", "")
+		optimizationMode := getStringParam(params, "optimization_mode", "")
+		
+		var maxResults int
+		var analysisStrategy string
+		var maxIterations int
+		var summaryStyle string
+		var maxLength int
+		var timeout int
+		var searchName, analysisName, summaryName string
+		
+		switch depth {
+		case "shallow":
+			maxResults = 3
+			analysisStrategy = "quick"
+			maxIterations = 3
+			summaryStyle = "concise"
+			maxLength = 300
+			timeout = 180 // 3 minutes
+			searchName = "Quick Web Search"
+			analysisName = "Quick Analysis"
+			summaryName = "Brief Summary"
+		case "deep":
+			maxResults = 10
+			analysisStrategy = "comprehensive"
+			maxIterations = 8
+			summaryStyle = "detailed"
+			maxLength = 1000
+			timeout = 600 // 10 minutes
+			searchName = "Comprehensive Web Search"
+			analysisName = "Deep Analysis"
+			summaryName = "Detailed Summary"
+		default: // medium
+			maxResults = 5
+			analysisStrategy = "balanced"
+			maxIterations = 5
+			summaryStyle = "executive"
+			maxLength = 600
+			timeout = 300 // 5 minutes
+			searchName = "Web Search"
+			analysisName = "Analysis"
+			summaryName = "Summary"
+		}
+		
+		// Build search configuration
+		searchConfig := map[string]interface{}{
+			"max_results": maxResults,
+		}
+		
+		// Add optional Perplexica settings if provided
+		if focusMode != "" {
+			searchConfig["focus_mode"] = focusMode
+			searchName += fmt.Sprintf(" (%s)", focusMode)
+		}
+		if optimizationMode != "" {
+			searchConfig["optimization_mode"] = optimizationMode
+		}
+		
 		chain = &services.AgentChain{
 			ID:          uuid.New().String(),
-			Name:        "Research: " + getStringParam(params, "topic", "Unknown Topic"),
-			Description: "Research pipeline for comprehensive topic analysis",
+			Name:        fmt.Sprintf("Research (%s): %s", strings.Title(depth), getStringParam(params, "topic", "Unknown Topic")),
+			Description: fmt.Sprintf("Research pipeline with %s depth for comprehensive topic analysis", depth),
 			Mode:        services.ChainModeSequential,
 			UserID:      userUUID,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
-			Timeout:     300,
+			Timeout:     timeout,
 			Agents: []services.AgentDefinition{
 				{
 					ID:          "search-" + uuid.New().String(),
 					Type:        services.AgentTypeWebSearch,
-					Name:        "Initial Web Search",
-					Description: "Search for information about the topic",
+					Name:        searchName,
+					Description: fmt.Sprintf("Search for information about the topic (up to %d results)", maxResults),
+					Config:      searchConfig,
 					InputMapping: map[string]string{
 						"query": "search_query",
 					},
@@ -378,10 +442,11 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 				{
 					ID:          "analyze-" + uuid.New().String(),
 					Type:        services.AgentTypeReasoning,
-					Name:        "Deep Analysis",
-					Description: "Analyze search results with reasoning",
+					Name:        analysisName,
+					Description: fmt.Sprintf("Analyze search results with %s reasoning", analysisStrategy),
 					Config: map[string]interface{}{
-						"strategy": "comprehensive",
+						"strategy":       analysisStrategy,
+						"max_iterations": maxIterations,
 					},
 					InputMapping: map[string]string{
 						"problem": "search_results",
@@ -391,10 +456,11 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 				{
 					ID:          "summarize-" + uuid.New().String(),
 					Type:        services.AgentTypeSummarizer,
-					Name:        "Create Summary",
-					Description: "Summarize findings",
+					Name:        summaryName,
+					Description: fmt.Sprintf("Create %s summary of findings", summaryStyle),
 					Config: map[string]interface{}{
-						"style": "executive",
+						"style":      summaryStyle,
+						"max_length": maxLength,
 					},
 					InputMapping: map[string]string{
 						"content": "analysis",
@@ -407,7 +473,15 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 		// Set initial data based on template parameters
 		initialData = map[string]interface{}{
 			"search_query": params["topic"],
-			"depth":        getStringParam(params, "depth", "medium"),
+			"depth":        depth,
+		}
+		
+		// Add optional Perplexica settings to initial data for reference
+		if focusMode != "" {
+			initialData["focus_mode"] = focusMode
+		}
+		if optimizationMode != "" {
+			initialData["optimization_mode"] = optimizationMode
 		}
 		
 	case "writing-template":

@@ -918,62 +918,93 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 	}
 	noteIDs = append(noteIDs, overviewNote.ID)
 
-	// Add overview content blocks
+	// Add overview content blocks with proper formatting
 	blocks := []struct {
 		blockType models.BlockType
-		content   map[string]interface{}
+		content   models.BlockContent
+		metadata  models.BlockMetadata
 		order     float64
 	}{
 		{
 			blockType: models.HeadingBlock,
-			content: map[string]interface{}{
-				"text":  "Agent Chain Execution Results",
-				"level": 1,
-			},
-			order: 1000.0,
+			content:   models.BlockContent{"text": "Agent Chain Execution Results"},
+			metadata:  models.BlockMetadata{"level": 1, "spans": []interface{}{}},
+			order:     1000.0,
 		},
 		{
 			blockType: models.TextBlock,
-			content: map[string]interface{}{
-				"text": fmt.Sprintf("**Chain:** %s\n**Mode:** %s\n**Status:** %s\n**Duration:** %.2fs\n**Execution ID:** %s",
-					chain.Name, chain.Mode, result.Status, 
-					result.EndTime.Sub(result.StartTime).Seconds(), result.ID),
-			},
-			order: 2000.0,
+			content:   models.BlockContent{"text": fmt.Sprintf("Chain: %s", chain.Name)},
+			metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 6, "type": "bold"}}},
+			order:     2000.0,
+		},
+		{
+			blockType: models.TextBlock,
+			content:   models.BlockContent{"text": fmt.Sprintf("Mode: %s", chain.Mode)},
+			metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 5, "type": "bold"}}},
+			order:     2100.0,
+		},
+		{
+			blockType: models.TextBlock,
+			content:   models.BlockContent{"text": fmt.Sprintf("Status: %s", result.Status)},
+			metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 7, "type": "bold"}}},
+			order:     2200.0,
+		},
+		{
+			blockType: models.TextBlock,
+			content:   models.BlockContent{"text": fmt.Sprintf("Duration: %.2fs", result.EndTime.Sub(result.StartTime).Seconds())},
+			metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 9, "type": "bold"}}},
+			order:     2300.0,
+		},
+		{
+			blockType: models.TextBlock,
+			content:   models.BlockContent{"text": fmt.Sprintf("Execution ID: %s", result.ID)},
+			metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 13, "type": "bold"}}},
+			order:     2400.0,
 		},
 	}
 
 	// Add error details if any
 	if len(result.Errors) > 0 {
-		var errorText strings.Builder
-		errorText.WriteString("**Errors encountered:**\n")
-		for _, err := range result.Errors {
-			errorText.WriteString(fmt.Sprintf("- %s (%s): %s\n", err.AgentName, err.AgentID, err.Error))
-		}
-		
-		blocks = append(blocks, struct {
+		errorHeaderBlock := struct {
 			blockType models.BlockType
-			content   map[string]interface{}
+			content   models.BlockContent
+			metadata  models.BlockMetadata
 			order     float64
 		}{
-			blockType: models.TextBlock,
-			content: map[string]interface{}{
-				"text": errorText.String(),
-			},
-			order: 3000.0,
-		})
+			blockType: models.HeadingBlock,
+			content:   models.BlockContent{"text": "Errors Encountered"},
+			metadata:  models.BlockMetadata{"level": 2, "spans": []interface{}{}},
+			order:     3000.0,
+		}
+		blocks = append(blocks, errorHeaderBlock)
+		
+		for i, err := range result.Errors {
+			errorText := fmt.Sprintf("%s (%s): %s", err.AgentName, err.AgentID, err.Error)
+			errorBlock := struct {
+				blockType models.BlockType
+				content   models.BlockContent
+				metadata  models.BlockMetadata
+				order     float64
+			}{
+				blockType: models.ListItemBlock,
+				content:   models.BlockContent{"text": errorText},
+				metadata:  models.BlockMetadata{"listType": "unordered", "spans": []interface{}{}},
+				order:     3100.0 + float64(i)*10.0,
+			}
+			blocks = append(blocks, errorBlock)
+		}
 	}
 
 	// Create overview blocks
 	for _, block := range blocks {
 		blockModel := models.Block{
-			ID:      uuid.New(),
-			UserID:  userID,
-			NoteID:  overviewNote.ID,
-			Type:    block.blockType,
-			Order:   block.order,
-			Content: block.content,
-			Metadata: models.BlockMetadata{},
+			ID:       uuid.New(),
+			UserID:   userID,
+			NoteID:   overviewNote.ID,
+			Type:     block.blockType,
+			Order:    block.order,
+			Content:  block.content,
+			Metadata: block.metadata,
 		}
 		o.db.Create(&blockModel)
 	}
@@ -993,27 +1024,36 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 		}
 		noteIDs = append(noteIDs, agentNote.ID)
 
-		// Create blocks for agent execution details
+		// Create blocks for agent execution details with proper formatting
 		agentBlocks := []struct {
 			blockType models.BlockType
-			content   map[string]interface{}
+			content   models.BlockContent
+			metadata  models.BlockMetadata
 			order     float64
 		}{
 			{
 				blockType: models.HeadingBlock,
-				content: map[string]interface{}{
-					"text":  fmt.Sprintf("Agent: %s", log.AgentName),
-					"level": 1,
-				},
-				order: 1000.0,
+				content:   models.BlockContent{"text": fmt.Sprintf("Agent: %s", log.AgentName)},
+				metadata:  models.BlockMetadata{"level": 1, "spans": []interface{}{}},
+				order:     1000.0,
 			},
 			{
 				blockType: models.TextBlock,
-				content: map[string]interface{}{
-					"text": fmt.Sprintf("**Status:** %s\n**Duration:** %.2fs\n**Agent ID:** %s",
-						log.Status, log.Duration, log.AgentID),
-				},
-				order: 2000.0,
+				content:   models.BlockContent{"text": fmt.Sprintf("Status: %s", log.Status)},
+				metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 7, "type": "bold"}}},
+				order:     2000.0,
+			},
+			{
+				blockType: models.TextBlock,
+				content:   models.BlockContent{"text": fmt.Sprintf("Duration: %.2fs", log.Duration)},
+				metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 9, "type": "bold"}}},
+				order:     2100.0,
+			},
+			{
+				blockType: models.TextBlock,
+				content:   models.BlockContent{"text": fmt.Sprintf("Agent ID: %s", log.AgentID)},
+				metadata:  models.BlockMetadata{"spans": []interface{}{map[string]interface{}{"start": 0, "end": 9, "type": "bold"}}},
+				order:     2200.0,
 			},
 		}
 
@@ -1022,81 +1062,90 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 			inputJSON, _ := json.MarshalIndent(log.Input, "", "  ")
 			agentBlocks = append(agentBlocks, struct {
 				blockType models.BlockType
-				content   map[string]interface{}
+				content   models.BlockContent
+				metadata  models.BlockMetadata
 				order     float64
 			}{
 				blockType: models.HeadingBlock,
-				content: map[string]interface{}{
-					"text":  "Input Parameters",
-					"level": 2,
-				},
-				order: 3000.0,
+				content:   models.BlockContent{"text": "Input Parameters"},
+				metadata:  models.BlockMetadata{"level": 2, "spans": []interface{}{}},
+				order:     3000.0,
 			})
 			agentBlocks = append(agentBlocks, struct {
 				blockType models.BlockType
-				content   map[string]interface{}
+				content   models.BlockContent
+				metadata  models.BlockMetadata
 				order     float64
 			}{
 				blockType: models.TextBlock,
-				content: map[string]interface{}{
-					"text": fmt.Sprintf("```json\n%s\n```", string(inputJSON)),
-				},
-				order: 3100.0,
+				content:   models.BlockContent{"text": string(inputJSON)},
+				metadata:  models.BlockMetadata{"spans": []interface{}{}},
+				order:     3100.0,
 			})
 		}
 
 		// Add output details
 		agentBlocks = append(agentBlocks, struct {
 			blockType models.BlockType
-			content   map[string]interface{}
+			content   models.BlockContent
+			metadata  models.BlockMetadata
 			order     float64
 		}{
 			blockType: models.HeadingBlock,
-			content: map[string]interface{}{
-				"text":  "Output",
-				"level": 2,
-			},
-			order: 4000.0,
+			content:   models.BlockContent{"text": "Output"},
+			metadata:  models.BlockMetadata{"level": 2, "spans": []interface{}{}},
+			order:     4000.0,
 		})
 
 		// Format output based on its type
 		var outputText string
+		var outputSpans []interface{}
+		
 		if log.Status == "failed" {
-			outputText = fmt.Sprintf("**Error:** %v", log.Output)
+			outputText = fmt.Sprintf("Error: %v", log.Output)
+			// Make "Error:" bold
+			outputSpans = []interface{}{
+				map[string]interface{}{
+					"start": 0,
+					"end":   6,
+					"type":  "bold",
+				},
+			}
 		} else {
 			if outputMap, ok := log.Output.(map[string]interface{}); ok {
 				if outputJSON, err := json.MarshalIndent(outputMap, "", "  "); err == nil {
-					outputText = fmt.Sprintf("```json\n%s\n```", string(outputJSON))
+					outputText = string(outputJSON)
 				} else {
 					outputText = fmt.Sprintf("%v", log.Output)
 				}
 			} else {
 				outputText = fmt.Sprintf("%v", log.Output)
 			}
+			outputSpans = []interface{}{}
 		}
 
 		agentBlocks = append(agentBlocks, struct {
 			blockType models.BlockType
-			content   map[string]interface{}
+			content   models.BlockContent
+			metadata  models.BlockMetadata
 			order     float64
 		}{
 			blockType: models.TextBlock,
-			content: map[string]interface{}{
-				"text": outputText,
-			},
-			order: 4100.0,
+			content:   models.BlockContent{"text": outputText},
+			metadata:  models.BlockMetadata{"spans": outputSpans},
+			order:     4100.0,
 		})
 
 		// Create all blocks for this agent
 		for _, block := range agentBlocks {
 			blockModel := models.Block{
-				ID:      uuid.New(),
-				UserID:  userID,
-				NoteID:  agentNote.ID,
-				Type:    block.blockType,
-				Order:   block.order,
-				Content: block.content,
-				Metadata: models.BlockMetadata{},
+				ID:       uuid.New(),
+				UserID:   userID,
+				NoteID:   agentNote.ID,
+				Type:     block.blockType,
+				Order:    block.order,
+				Content:  block.content,
+				Metadata: block.metadata,
 			}
 			o.db.Create(&blockModel)
 		}
@@ -1114,42 +1163,24 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 		if err == nil {
 			noteIDs = append(noteIDs, resultsNote.ID)
 
-			// Format results as human-readable Markdown
-			resultsMarkdown := o.FormatResultsAsMarkdown(result.Results)
-			
-			resultBlocks := []struct {
-				blockType models.BlockType
-				content   map[string]interface{}
-				order     float64
-			}{
-				{
-					blockType: models.HeadingBlock,
-					content: map[string]interface{}{
-						"text":  "Chain Results",
-						"level": 1,
-					},
-					order: 1000.0,
-				},
-				{
-					blockType: models.TextBlock,
-					content: map[string]interface{}{
-						"text": resultsMarkdown,
-					},
-					order: 2000.0,
-				},
+			// Create a main header for the results
+			mainHeaderBlock := models.Block{
+				ID:      uuid.New(),
+				UserID:  userID,
+				NoteID:  resultsNote.ID,
+				Type:    models.HeadingBlock,
+				Order:   500.0,
+				Content: models.BlockContent{"text": "Chain Results"},
+				Metadata: models.BlockMetadata{"level": 1, "spans": []interface{}{}},
 			}
+			o.db.Create(&mainHeaderBlock)
 
+			// Format results as properly structured blocks
+			resultBlocks := o.FormatResultsAsBlocks(result.Results, userID, resultsNote.ID)
+			
+			// Save all the result blocks to the database
 			for _, block := range resultBlocks {
-				blockModel := models.Block{
-					ID:      uuid.New(),
-					UserID:  userID,
-					NoteID:  resultsNote.ID,
-					Type:    block.blockType,
-					Order:   block.order,
-					Content: block.content,
-					Metadata: models.BlockMetadata{},
-				}
-				o.db.Create(&blockModel)
+				o.db.Create(&block)
 			}
 		}
 	}
@@ -1157,9 +1188,10 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 	return notebook.ID, noteIDs, nil
 }
 
-// FormatResultsAsMarkdown converts chain execution results to human-readable Markdown
-func (o *AgentOrchestrator) FormatResultsAsMarkdown(results map[string]interface{}) string {
-	var markdownBuilder strings.Builder
+// FormatResultsAsBlocks converts chain execution results to properly formatted blocks
+func (o *AgentOrchestrator) FormatResultsAsBlocks(results map[string]interface{}, userID, noteID uuid.UUID) []models.Block {
+	var blocks []models.Block
+	order := 1000.0
 	
 	// Process each result in a logical order
 	processedKeys := make(map[string]bool)
@@ -1169,7 +1201,9 @@ func (o *AgentOrchestrator) FormatResultsAsMarkdown(results map[string]interface
 	
 	for _, key := range keyOrder {
 		if value, exists := results[key]; exists && !processedKeys[key] {
-			o.formatResultSection(&markdownBuilder, key, value)
+			resultBlocks := o.formatResultSectionAsBlocks(key, value, userID, noteID, order)
+			blocks = append(blocks, resultBlocks...)
+			order += float64(len(resultBlocks)) * 100.0
 			processedKeys[key] = true
 		}
 	}
@@ -1177,61 +1211,257 @@ func (o *AgentOrchestrator) FormatResultsAsMarkdown(results map[string]interface
 	// Then handle any remaining keys
 	for key, value := range results {
 		if !processedKeys[key] {
-			o.formatResultSection(&markdownBuilder, key, value)
+			resultBlocks := o.formatResultSectionAsBlocks(key, value, userID, noteID, order)
+			blocks = append(blocks, resultBlocks...)
+			order += float64(len(resultBlocks)) * 100.0
 		}
 	}
 	
 	// If no meaningful content was formatted, provide a fallback
-	content := markdownBuilder.String()
-	if strings.TrimSpace(content) == "" {
-		content = "**Results Summary**\n\nThe chain execution completed successfully. The results contain technical data that has been processed by the agent chain."
+	if len(blocks) == 0 {
+		blocks = append(blocks, models.Block{
+			ID:      uuid.New(),
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    models.HeadingBlock,
+			Order:   order,
+			Content: models.BlockContent{"text": "Results Summary"},
+			Metadata: models.BlockMetadata{"level": 2, "spans": []interface{}{}},
+		})
+		
+		blocks = append(blocks, models.Block{
+			ID:      uuid.New(),
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    models.TextBlock,
+			Order:   order + 100.0,
+			Content: models.BlockContent{"text": "The chain execution completed successfully. The results contain technical data that has been processed by the agent chain."},
+			Metadata: models.BlockMetadata{"spans": []interface{}{}},
+		})
 	}
 	
-	return content
+	return blocks
 }
 
-// formatResultSection formats a single result section as Markdown
-func (o *AgentOrchestrator) formatResultSection(builder *strings.Builder, key string, value interface{}) {
+// formatResultSectionAsBlocks formats a single result section as properly structured blocks
+func (o *AgentOrchestrator) formatResultSectionAsBlocks(key string, value interface{}, userID, noteID uuid.UUID, baseOrder float64) []models.Block {
+	var blocks []models.Block
+	
 	// Skip internal/technical keys that aren't user-friendly
 	skipKeys := map[string]bool{
 		"user_id": true,
 	}
 	
 	if skipKeys[key] {
-		return
+		return blocks
 	}
 	
-	// Create a human-readable section title
+	// Create a human-readable section title with emoji
 	sectionTitle := o.humanizeKey(key)
-	builder.WriteString(fmt.Sprintf("## %s\n\n", sectionTitle))
+	
+	// Add section header
+	headerBlock := models.Block{
+		ID:      uuid.New(),
+		UserID:  userID,
+		NoteID:  noteID,
+		Type:    models.HeadingBlock,
+		Order:   baseOrder,
+		Content: models.BlockContent{"text": sectionTitle},
+		Metadata: models.BlockMetadata{"level": 2, "spans": []interface{}{}},
+	}
+	blocks = append(blocks, headerBlock)
 	
 	// Format the value based on its type
+	contentBlocks := o.formatValueAsBlocks(value, userID, noteID, baseOrder+50.0)
+	blocks = append(blocks, contentBlocks...)
+	
+	return blocks
+}
+
+// formatValueAsBlocks converts different value types to appropriate blocks
+func (o *AgentOrchestrator) formatValueAsBlocks(value interface{}, userID, noteID uuid.UUID, baseOrder float64) []models.Block {
+	var blocks []models.Block
+	
 	switch v := value.(type) {
 	case string:
 		// Handle string values
-		if strings.Contains(v, "\n") {
-			// Multi-line string - format as blockquote or preserve formatting
-			builder.WriteString(fmt.Sprintf("%s\n\n", v))
-		} else if len(v) > 200 {
-			// Long single-line string - add line breaks for readability
-			builder.WriteString(fmt.Sprintf("%s\n\n", v))
-		} else {
-			// Short string
-			builder.WriteString(fmt.Sprintf("%s\n\n", v))
+		textBlock := models.Block{
+			ID:      uuid.New(),
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    models.TextBlock,
+			Order:   baseOrder,
+			Content: models.BlockContent{"text": v},
+			Metadata: models.BlockMetadata{"spans": []interface{}{}},
 		}
+		blocks = append(blocks, textBlock)
 		
 	case map[string]interface{}:
 		// Handle nested objects
-		o.formatMapAsMarkdown(builder, v, 0)
-		builder.WriteString("\n")
+		blocks = append(blocks, o.formatMapAsBlocks(v, userID, noteID, baseOrder)...)
 		
 	case []interface{}:
-		// Handle arrays
-		builder.WriteString("- " + strings.Join(o.formatArrayAsStrings(v), "\n- ") + "\n\n")
+		// Handle arrays - create list items
+		for i, item := range v {
+			itemText := o.formatArrayItemAsString(item)
+			listBlock := models.Block{
+				ID:      uuid.New(),
+				UserID:  userID,
+				NoteID:  noteID,
+				Type:    models.ListItemBlock,
+				Order:   baseOrder + float64(i)*10.0,
+				Content: models.BlockContent{"text": itemText},
+				Metadata: models.BlockMetadata{
+					"listType": "unordered",
+					"spans":    []interface{}{},
+				},
+			}
+			blocks = append(blocks, listBlock)
+		}
 		
 	default:
 		// Handle other types (numbers, booleans, etc.)
-		builder.WriteString(fmt.Sprintf("%v\n\n", v))
+		textBlock := models.Block{
+			ID:      uuid.New(),
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    models.TextBlock,
+			Order:   baseOrder,
+			Content: models.BlockContent{"text": fmt.Sprintf("%v", v)},
+			Metadata: models.BlockMetadata{"spans": []interface{}{}},
+		}
+		blocks = append(blocks, textBlock)
+	}
+	
+	return blocks
+}
+
+// formatMapAsBlocks formats a map as nested blocks with proper text formatting
+func (o *AgentOrchestrator) formatMapAsBlocks(data map[string]interface{}, userID, noteID uuid.UUID, baseOrder float64) []models.Block {
+	var blocks []models.Block
+	order := baseOrder
+	
+	for key, value := range data {
+		humanKey := o.humanizeKey(key)
+		
+		// Create a text block with formatted key-value content
+		var text string
+		var spans []interface{}
+		
+		switch v := value.(type) {
+		case string:
+			if strings.Contains(v, "\n") {
+				// Multi-line value - put key on its own line
+				text = fmt.Sprintf("%s:\n%s", humanKey, v)
+				// Add bold formatting for the key
+				spans = []interface{}{
+					map[string]interface{}{
+						"start": 0,
+						"end":   len(humanKey),
+						"type":  "bold",
+					},
+				}
+			} else {
+				// Single line value
+				text = fmt.Sprintf("%s: %s", humanKey, v)
+				// Add bold formatting for the key and colon
+				spans = []interface{}{
+					map[string]interface{}{
+						"start": 0,
+						"end":   len(humanKey),
+						"type":  "bold",
+					},
+				}
+			}
+			
+		case map[string]interface{}:
+			text = humanKey + ":"
+			spans = []interface{}{
+				map[string]interface{}{
+					"start": 0,
+					"end":   len(humanKey),
+					"type":  "bold",
+				},
+			}
+			
+		case []interface{}:
+			text = humanKey + ":"
+			spans = []interface{}{
+				map[string]interface{}{
+					"start": 0,
+					"end":   len(humanKey),
+					"type":  "bold",
+				},
+			}
+			
+		default:
+			text = fmt.Sprintf("%s: %v", humanKey, v)
+			spans = []interface{}{
+				map[string]interface{}{
+					"start": 0,
+					"end":   len(humanKey),
+					"type":  "bold",
+				},
+			}
+		}
+		
+		textBlock := models.Block{
+			ID:      uuid.New(),
+			UserID:  userID,
+			NoteID:  noteID,
+			Type:    models.TextBlock,
+			Order:   order,
+			Content: models.BlockContent{"text": text},
+			Metadata: models.BlockMetadata{"spans": spans},
+		}
+		blocks = append(blocks, textBlock)
+		order += 10.0
+		
+		// For nested structures, recursively create blocks
+		if nestedMap, ok := value.(map[string]interface{}); ok {
+			nestedBlocks := o.formatMapAsBlocks(nestedMap, userID, noteID, order)
+			blocks = append(blocks, nestedBlocks...)
+			order += float64(len(nestedBlocks)) * 10.0
+		} else if nestedArray, ok := value.([]interface{}); ok {
+			for i, item := range nestedArray {
+				itemText := o.formatArrayItemAsString(item)
+				listBlock := models.Block{
+					ID:      uuid.New(),
+					UserID:  userID,
+					NoteID:  noteID,
+					Type:    models.ListItemBlock,
+					Order:   order + float64(i)*5.0,
+					Content: models.BlockContent{"text": itemText},
+					Metadata: models.BlockMetadata{
+						"listType": "unordered",
+						"spans":    []interface{}{},
+					},
+				}
+				blocks = append(blocks, listBlock)
+			}
+			order += float64(len(nestedArray)) * 5.0
+		}
+	}
+	
+	return blocks
+}
+
+// formatArrayItemAsString converts an array item to string for display
+func (o *AgentOrchestrator) formatArrayItemAsString(item interface{}) string {
+	switch v := item.(type) {
+	case string:
+		return v
+	case map[string]interface{}:
+		// For complex objects, try to extract meaningful text
+		if title, exists := v["title"]; exists {
+			return fmt.Sprintf("%v", title)
+		} else if name, exists := v["name"]; exists {
+			return fmt.Sprintf("%v", name)
+		} else {
+			return fmt.Sprintf("%v", v)
+		}
+	default:
+		return fmt.Sprintf("%v", v)
 	}
 }
 
@@ -1263,56 +1493,3 @@ func (o *AgentOrchestrator) humanizeKey(key string) string {
 	return strings.Join(words, " ")
 }
 
-// formatMapAsMarkdown formats a map as nested Markdown
-func (o *AgentOrchestrator) formatMapAsMarkdown(builder *strings.Builder, data map[string]interface{}, indent int) {
-	indentStr := strings.Repeat("  ", indent)
-	
-	for key, value := range data {
-		humanKey := o.humanizeKey(key)
-		
-		switch v := value.(type) {
-		case string:
-			if strings.Contains(v, "\n") {
-				builder.WriteString(fmt.Sprintf("%s**%s:**\n%s%s\n\n", indentStr, humanKey, indentStr, v))
-			} else {
-				builder.WriteString(fmt.Sprintf("%s**%s:** %s\n", indentStr, humanKey, v))
-			}
-			
-		case map[string]interface{}:
-			builder.WriteString(fmt.Sprintf("%s**%s:**\n", indentStr, humanKey))
-			o.formatMapAsMarkdown(builder, v, indent+1)
-			
-		case []interface{}:
-			builder.WriteString(fmt.Sprintf("%s**%s:**\n", indentStr, humanKey))
-			for _, item := range v {
-				builder.WriteString(fmt.Sprintf("%s  - %v\n", indentStr, item))
-			}
-			
-		default:
-			builder.WriteString(fmt.Sprintf("%s**%s:** %v\n", indentStr, humanKey, v))
-		}
-	}
-}
-
-// formatArrayAsStrings converts an array to string slice for formatting
-func (o *AgentOrchestrator) formatArrayAsStrings(arr []interface{}) []string {
-	var result []string
-	for _, item := range arr {
-		switch v := item.(type) {
-		case string:
-			result = append(result, v)
-		case map[string]interface{}:
-			// For complex objects, try to extract meaningful text
-			if title, exists := v["title"]; exists {
-				result = append(result, fmt.Sprintf("%v", title))
-			} else if name, exists := v["name"]; exists {
-				result = append(result, fmt.Sprintf("%v", name))
-			} else {
-				result = append(result, fmt.Sprintf("%v", v))
-			}
-		default:
-			result = append(result, fmt.Sprintf("%v", v))
-		}
-	}
-	return result
-}

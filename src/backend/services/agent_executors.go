@@ -324,22 +324,33 @@ func (w *WebSearchAgent) Execute(ctx context.Context, input map[string]interface
 	if m, ok := input["max_results"].(int); ok {
 		maxResults = m
 	}
-	// Perform web search
-	searchPrompt := fmt.Sprintf("Search the web for: %s\nReturn top %d relevant results with titles, URLs, and summaries.", query, maxResults)
 	
+	// Extract optional Perplexica parameters
+	focusMode := "webSearch" // default
+	if fm, ok := input["focus_mode"].(string); ok && fm != "" {
+		focusMode = fm
+	}
 	
-	// Try Perplexica first, fall back to AI synthesis if not available
-	response, err := w.aiService.PerformWebSearch(ctx, searchPrompt)
+	optimizationMode := "balanced" // default
+	if om, ok := input["optimization_mode"].(string); ok && om != "" {
+		optimizationMode = om
+	}
+	
+	// Try Perplexica first with advanced parameters, fall back to AI synthesis if not available
+	response, err := w.aiService.PerformAdvancedWebSearch(ctx, query, focusMode, optimizationMode)
 	if err != nil {
 		// Fallback: Generate a synthetic response based on AI knowledge
 		fallbackPrompt := fmt.Sprintf(`Based on your knowledge, provide a comprehensive response about: %s
 
-Please structure your response as if it were search results, including:
+Please structure your response as if it were search results with up to %d key points, including:
 1. A main answer/summary
 2. Key points and facts
 3. Relevant context and background information
 
-Note: This response is generated from AI knowledge, not live web search.`, query)
+Focus mode: %s
+Optimization: %s
+
+Note: This response is generated from AI knowledge, not live web search.`, query, maxResults, focusMode, optimizationMode)
 
 		fallbackResponse, fallbackErr := w.aiService.GenerateResponse(ctx, fallbackPrompt, nil)
 		if fallbackErr != nil {
@@ -347,17 +358,23 @@ Note: This response is generated from AI knowledge, not live web search.`, query
 		}
 
 		return map[string]interface{}{
-			"query":   query,
-			"results": fallbackResponse,
-			"source":  "ai_knowledge",
-			"note":    "Generated from AI knowledge since web search is unavailable",
+			"query":            query,
+			"results":          fallbackResponse,
+			"source":           "ai_knowledge",
+			"focus_mode":       focusMode,
+			"optimization_mode": optimizationMode,
+			"max_results":      maxResults,
+			"note":             "Generated from AI knowledge since web search is unavailable",
 		}, nil
 	}
 
 	return map[string]interface{}{
-		"query":   query,
-		"results": response,
-		"source":  "web_search",
+		"query":            query,
+		"results":          response,
+		"source":           "web_search",
+		"focus_mode":       focusMode,
+		"optimization_mode": optimizationMode,
+		"max_results":      maxResults,
 	}, nil
 }
 

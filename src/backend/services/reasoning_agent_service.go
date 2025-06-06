@@ -22,6 +22,9 @@ const (
 	ExploratoryStrategy  ReasoningStrategy = "exploratory"
 	FocusedStrategy      ReasoningStrategy = "focused"
 	MultiStrategy        ReasoningStrategy = "multi_strategy"
+	QuickStrategy        ReasoningStrategy = "quick"
+	BalancedStrategy     ReasoningStrategy = "balanced"
+	ComprehensiveStrategy ReasoningStrategy = "comprehensive"
 )
 
 // ReasoningRequest represents a request to the reasoning agent
