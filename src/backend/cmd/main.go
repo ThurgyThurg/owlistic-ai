@@ -94,11 +94,11 @@ func main() {
 	// Register public routes (no auth required)
 	routes.RegisterAuthRoutes(publicGroup, db, authService)
 	routes.RegisterPublicUserRoutes(publicGroup, db, userService, authService)
-	
+
 	// Register AI routes on public group for single-user mode
 	aiRoutes := routes.NewAIRoutes(db.DB)
 	aiRoutes.RegisterRoutes(publicGroup)
-	
+
 	// Register Agent Orchestrator routes on public group for single-user mode
 	orchestratorRoutes := routes.NewAgentOrchestratorRoutes(db.DB)
 	orchestratorRoutes.RegisterRoutes(publicGroup)
@@ -123,7 +123,6 @@ func main() {
 	wsGroup.Use(middleware.AuthMiddleware(authService))
 	routes.RegisterWebSocketRoutes(wsGroup, webSocketService)
 
-
 	// Register Calendar routes on protected group
 	calendarRoutes, err := routes.NewCalendarRoutes(db.DB)
 	if err != nil {
@@ -147,37 +146,37 @@ func main() {
 	}
 
 	// Initialize Telegram service and routes (optional - disabled to prevent crashes)
-	aiService := services.NewAIService(db.DB)
-	
+	//	aiService := services.NewAIService(db.DB)
+
 	// Temporarily disable Telegram to prevent crashes
 	log.Printf("Telegram service is disabled to prevent application crashes")
 	log.Printf("Note: To re-enable, uncomment the Telegram initialization code in main.go")
-	
-	/*
-	telegramService, err := services.NewTelegramService(db.DB, aiService)
-	if err != nil {
-		log.Printf("Failed to initialize Telegram service: %v", err)
-		log.Printf("Telegram bot will not be available")
-		log.Printf("Note: Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables to enable Telegram features")
-	} else {
-		// Register Telegram routes
-		telegramRoutes := routes.NewTelegramRoutes(db.DB, telegramService)
-		telegramRoutes.RegisterRoutes(protectedGroup)
 
-		// Start Telegram bot listening in background with crash protection
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("Telegram service crashed but application continues: %v", r)
+	/*
+		telegramService, err := services.NewTelegramService(db.DB, aiService)
+		if err != nil {
+			log.Printf("Failed to initialize Telegram service: %v", err)
+			log.Printf("Telegram bot will not be available")
+			log.Printf("Note: Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables to enable Telegram features")
+		} else {
+			// Register Telegram routes
+			telegramRoutes := routes.NewTelegramRoutes(db.DB, telegramService)
+			telegramRoutes.RegisterRoutes(protectedGroup)
+
+			// Start Telegram bot listening in background with crash protection
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("Telegram service crashed but application continues: %v", r)
+					}
+				}()
+
+				if err := telegramService.StartListening(); err != nil {
+					log.Printf("Telegram bot stopped: %v", err)
 				}
 			}()
-			
-			if err := telegramService.StartListening(); err != nil {
-				log.Printf("Telegram bot stopped: %v", err)
-			}
-		}()
-		log.Println("Telegram bot started and listening for messages...")
-	}
+			log.Println("Telegram bot started and listening for messages...")
+		}
 	*/
 
 	// Register debug routes for monitoring events
