@@ -93,7 +93,7 @@ func NewChromaService(baseURL string, db *gorm.DB) *ChromaService {
 	
 	return &ChromaService{
 		baseURL:    baseURL,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 10 * time.Second}, // Reduced to minimize context goroutines
 		db:         db,
 	}
 }

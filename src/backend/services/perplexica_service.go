@@ -75,7 +75,7 @@ func NewPerplexicaService() *PerplexicaService {
 
 	return &PerplexicaService{
 		baseURL:    baseURL,
-		httpClient: &http.Client{Timeout: 60 * time.Second}, // Longer timeout for search operations
+		httpClient: &http.Client{Timeout: 15 * time.Second}, // Reduced to minimize context goroutines // Longer timeout for search operations
 		logger:     logger.New("PerplexicaService"),
 	}
 }

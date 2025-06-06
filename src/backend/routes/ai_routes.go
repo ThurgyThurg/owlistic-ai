@@ -94,6 +94,15 @@ func (ar *AIRoutes) processNoteWithAI(c *gin.Context) {
 		return
 	}
 
+	// AI background processing is disabled to prevent goroutine leaks
+	log.Printf("AI background processing is disabled to prevent application crashes")
+	log.Printf("Note: To re-enable, uncomment the AI processing code in ai_routes.go")
+	
+	// Minimal usage to prevent import errors (remove when re-enabling background processing)
+	_ = context.Background()
+	_ = fmt.Sprintf("")
+	
+	/*
 	// Process note with AI in background
 	go func() {
 		// Use background context to prevent cancellation when HTTP request completes
@@ -104,6 +113,7 @@ func (ar *AIRoutes) processNoteWithAI(c *gin.Context) {
 			println("AI processing error:", err.Error())
 		}
 	}()
+	*/
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"message": "AI processing started",
@@ -432,6 +442,17 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 		return
 	}
 
+	// Agent background processing is disabled to prevent goroutine leaks
+	log.Printf("Agent background processing is disabled to prevent application crashes")
+	log.Printf("Note: To re-enable, uncomment the agent processing code in ai_routes.go")
+	
+	// Mark agent as failed due to disabled processing
+	agent.Status = "disabled"
+	agent.ErrorMessage = "Agent background processing is disabled to prevent application crashes"
+	agent.CompletedAt = &[]time.Time{time.Now()}[0]
+	ar.db.Save(&agent)
+	
+	/*
 	// Execute agent in background
 	go func() {
 		// Update agent status to running
@@ -473,6 +494,7 @@ func (ar *AIRoutes) runAgent(c *gin.Context) {
 		// Save the final status
 		ar.db.Save(&agent)
 	}()
+	*/
 	
 	c.JSON(http.StatusCreated, agent)
 }

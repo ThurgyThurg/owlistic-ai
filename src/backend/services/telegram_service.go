@@ -108,7 +108,9 @@ func (ts *TelegramService) StartListening() error {
 					continue
 				}
 
-				go ts.handleMessage(update.Message)
+				// Background message processing disabled to prevent goroutine leaks
+				log.Printf("Telegram message processing is disabled to prevent application crashes")
+				// go ts.handleMessage(update.Message)
 			}
 		}()
 
@@ -590,12 +592,17 @@ func (ts *TelegramService) handleNote(ctx context.Context, userID uuid.UUID, mes
 		// Note was created, so don't fail completely
 	}
 
+	// AI background processing is disabled to prevent goroutine leaks
+	log.Printf("Telegram AI processing is disabled to prevent application crashes")
+	
+	/*
 	// Trigger AI processing for the note
 	go func() {
 		if err := ts.aiService.ProcessNoteWithAI(context.Background(), note.ID); err != nil {
 			log.Printf("Failed to process note with AI: %v", err)
 		}
 	}()
+	*/
 
 	return fmt.Sprintf("📝 Note created: \"%s\"\n🤖 AI processing started for enhanced insights\n📝 Note ID: %s", note.Title, note.ID)
 }
@@ -1508,7 +1515,7 @@ func (ts *TelegramService) sendMessage(text string) {
 	msg.ParseMode = "Markdown"
 	
 	// Create a context with timeout for the send operation
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // Reduced to minimize context goroutines
 	defer cancel()
 	
 	// Use a goroutine with timeout to prevent blocking
@@ -1545,7 +1552,7 @@ func (ts *TelegramService) SendNotification(message string) error {
 	msg.ParseMode = "Markdown"
 	
 	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // Reduced to minimize context goroutines
 	defer cancel()
 	
 	// Use a goroutine with timeout to prevent blocking

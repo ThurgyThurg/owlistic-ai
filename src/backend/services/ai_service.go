@@ -72,7 +72,7 @@ func NewAIService(db *gorm.DB) *AIService {
 		anthropicKey:      anthropicKey,
 		anthropicModel:    anthropicModel,
 		chromaService:     chromaService,
-		httpClient:        &http.Client{Timeout: 30 * time.Second},
+		httpClient:        &http.Client{Timeout: 10 * time.Second}, // Reduced to minimize context goroutines
 		perplexicaService: NewPerplexicaService(),
 	}
 	
