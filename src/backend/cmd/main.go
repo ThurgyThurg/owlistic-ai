@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"owlistic-notes/owlistic/broker"
 	"owlistic-notes/owlistic/config"
 	"owlistic-notes/owlistic/database"
 	"owlistic-notes/owlistic/middleware"
@@ -30,12 +29,15 @@ func main() {
 	}
 	defer db.Close()
 
-	// Initialize producer
+	// Initialize producer (disabled to prevent crashes)
+	log.Printf("NATS producer is disabled to prevent application crashes")
+	/*
 	err = broker.InitProducer(cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize producer: %v", err)
 	}
 	defer broker.CloseProducer()
+	*/
 
 	// Initialize all service instances properly with database
 	// Initialize authentication service
@@ -58,7 +60,11 @@ func main() {
 		log.Printf("Warning: Failed to initialize single user: %v", err)
 	}
 
-	// Initialize eventHandler service with the database
+	// Initialize eventHandler service with the database (disabled to prevent NATS crashes)
+	log.Printf("Event-based services are disabled to prevent NATS connection crashes")
+	log.Printf("Note: To re-enable, uncomment the event service initialization code in main.go")
+
+	/*
 	eventHandlerService := services.NewEventHandlerService(db)
 	services.EventHandlerServiceInstance = eventHandlerService
 
@@ -82,6 +88,7 @@ func main() {
 	log.Println("Starting Block-Task Sync Handler...")
 	syncHandler.Start(cfg)
 	defer syncHandler.Stop()
+	*/
 
 	router := gin.Default()
 
@@ -118,10 +125,12 @@ func main() {
 	routes.RegisterProtectedUserRoutes(protectedGroup, db, userService, authService)
 	routes.RegisterRoleRoutes(protectedGroup, db, services.RoleServiceInstance)
 
-	// Register WebSocket routes with consistent auth middleware
+	// Register WebSocket routes with consistent auth middleware (disabled - WebSocket service is disabled)
+	/*
 	wsGroup := router.Group("/ws")
 	wsGroup.Use(middleware.AuthMiddleware(authService))
 	routes.RegisterWebSocketRoutes(wsGroup, webSocketService)
+	*/
 
 	// Register Calendar routes on protected group
 	calendarRoutes, err := routes.NewCalendarRoutes(db.DB)
