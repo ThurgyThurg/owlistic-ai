@@ -1,13 +1,15 @@
 {
-    "name": "owlistic",
-    "short_name": "owlistic",
-    "start_url": ".",
+    "name": "Owlistic Notes",
+    "short_name": "Owlistic",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
+    "background_color": "#FFFFFF",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "AI-powered note-taking app with intelligent organization and insights",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "categories": ["productivity", "utilities"],
     "icons": [
         {
             "src": "icons/Icon-192.png",
