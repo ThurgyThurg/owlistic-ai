@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"owlistic-notes/owlistic/broker"
 	"owlistic-notes/owlistic/config"
 	"owlistic-notes/owlistic/database"
 	"owlistic-notes/owlistic/middleware"
@@ -29,15 +30,12 @@ func main() {
 	}
 	defer db.Close()
 
-	// Initialize producer (disabled to prevent crashes)
-	log.Printf("NATS producer is disabled to prevent application crashes")
-	/*
+	// Initialize producer
 	err = broker.InitProducer(cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize producer: %v", err)
 	}
 	defer broker.CloseProducer()
-	*/
 
 	// Initialize all service instances properly with database
 	// Initialize authentication service
@@ -60,11 +58,7 @@ func main() {
 		log.Printf("Warning: Failed to initialize single user: %v", err)
 	}
 
-	// Initialize eventHandler service with the database (disabled to prevent NATS crashes)
-	log.Printf("Event-based services are disabled to prevent NATS connection crashes")
-	log.Printf("Note: To re-enable, uncomment the event service initialization code in main.go")
-
-	/*
+	// Initialize eventHandler service with the database
 	eventHandlerService := services.NewEventHandlerService(db)
 	services.EventHandlerServiceInstance = eventHandlerService
 
@@ -88,7 +82,6 @@ func main() {
 	log.Println("Starting Block-Task Sync Handler...")
 	syncHandler.Start(cfg)
 	defer syncHandler.Stop()
-	*/
 
 	router := gin.Default()
 
@@ -125,12 +118,10 @@ func main() {
 	routes.RegisterProtectedUserRoutes(protectedGroup, db, userService, authService)
 	routes.RegisterRoleRoutes(protectedGroup, db, services.RoleServiceInstance)
 
-	// Register WebSocket routes with consistent auth middleware (disabled - WebSocket service is disabled)
-	/*
+	// Register WebSocket routes with consistent auth middleware
 	wsGroup := router.Group("/ws")
 	wsGroup.Use(middleware.AuthMiddleware(authService))
 	routes.RegisterWebSocketRoutes(wsGroup, webSocketService)
-	*/
 
 	// Register Calendar routes on protected group
 	calendarRoutes, err := routes.NewCalendarRoutes(db.DB)
@@ -154,39 +145,33 @@ func main() {
 		log.Println("Zettelkasten routes registered successfully")
 	}
 
-	// Initialize Telegram service and routes (optional - disabled to prevent crashes)
-	//	aiService := services.NewAIService(db.DB)
+	// Initialize Telegram service and routes (optional)
+	aiService := services.NewAIService(db.DB)
 
-	// Temporarily disable Telegram to prevent crashes
-	log.Printf("Telegram service is disabled to prevent application crashes")
-	log.Printf("Note: To re-enable, uncomment the Telegram initialization code in main.go")
+	telegramService, err := services.NewTelegramService(db.DB, aiService)
+	if err != nil {
+		log.Printf("Failed to initialize Telegram service: %v", err)
+		log.Printf("Telegram bot will not be available")
+		log.Printf("Note: Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables to enable Telegram features")
+	} else {
+		// Register Telegram routes
+		telegramRoutes := routes.NewTelegramRoutes(db.DB, telegramService)
+		telegramRoutes.RegisterRoutes(protectedGroup)
 
-	/*
-		telegramService, err := services.NewTelegramService(db.DB, aiService)
-		if err != nil {
-			log.Printf("Failed to initialize Telegram service: %v", err)
-			log.Printf("Telegram bot will not be available")
-			log.Printf("Note: Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables to enable Telegram features")
-		} else {
-			// Register Telegram routes
-			telegramRoutes := routes.NewTelegramRoutes(db.DB, telegramService)
-			telegramRoutes.RegisterRoutes(protectedGroup)
-
-			// Start Telegram bot listening in background with crash protection
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("Telegram service crashed but application continues: %v", r)
-					}
-				}()
-
-				if err := telegramService.StartListening(); err != nil {
-					log.Printf("Telegram bot stopped: %v", err)
+		// Start Telegram bot listening in background with crash protection
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Telegram service crashed but application continues: %v", r)
 				}
 			}()
-			log.Println("Telegram bot started and listening for messages...")
-		}
-	*/
+
+			if err := telegramService.StartListening(); err != nil {
+				log.Printf("Telegram bot stopped: %v", err)
+			}
+		}()
+		log.Println("Telegram bot started and listening for messages...")
+	}
 
 	// Register debug routes for monitoring events
 	routes.SetupDebugRoutes(router, db)
