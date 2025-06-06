@@ -97,7 +97,7 @@ func (r *ReasoningAgentService) ExecuteReasoningLoop(ctx context.Context, userID
 		CurrentState:   "initializing",
 		Learnings:      []string{},
 		Resources:      make(map[string]interface{}),
-		MaxSteps:       10,
+		MaxSteps:       5, // Reduced from 10 to prevent timeouts
 		Strategy:       strategy,
 	}
 
