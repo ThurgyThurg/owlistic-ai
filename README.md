@@ -2,27 +2,71 @@
 
   <img src="src/frontend/assets/logo/owlistic-w-text.png" width="400px" />
   
-  # 🦉 Open-source real-time notetaking & todo app 🔄⚡️🚀
+  # 🦉 Owlistic AI - Enhanced Fork with Advanced AI Capabilities 🤖🔄⚡️
 
-  [![Release](https://img.shields.io/github/release/owlistic-notes/owlistic)](https://github.com/owlistic-notes/owlistic/releases/latest)
-  [![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://owlistic-notes.github.io/owlistic/docs/category/overview)
+  > **Fork of [owlistic-notes/owlistic](https://github.com/owlistic-notes/owlistic) with powerful AI enhancements**
+
+  [![Original Project](https://img.shields.io/badge/original-owlistic--notes-blue.svg)](https://github.com/owlistic-notes/owlistic)
   [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
-  [![standard-readme](https://img.shields.io/badge/standard--readme-OK-green.svg)](https://github.com/RichardLitt/standard-readme)
-
-  [![Activity](https://img.shields.io/github/commit-activity/m/owlistic-notes/owlistic)](https://github.com/owlistic-notes/owlistic/pulse)
+  [![AI Enhanced](https://img.shields.io/badge/AI-Enhanced-green.svg)](https://github.com/anthropics/claude)
 
 </div>
 
+## 🔀 About This Fork
+
+This is an enhanced fork of the original [Owlistic](https://github.com/owlistic-notes/owlistic) project that adds extensive AI capabilities, including agent orchestration, intelligent note processing, and advanced search features. All original features are maintained while adding powerful new AI-driven functionality.
+
 ## Table of Contents
 
+- [New AI Features in This Fork](#new-ai-features-in-this-fork)
 - [Quick Links](#quick-links)
-- [Features](#features)
+- [Original Features](#original-features)
 - [Screenshots](#screenshots)
-- [AI Features](#ai-features)
+- [AI Features (From Original)](#ai-features-from-original)
 - [Installation](#install)
-- [Maintainers](#maintainers)
 - [Contributing](#contributing)
 - [License](#license)
+
+## 🚀 New Features in This Fork
+
+This fork adds comprehensive AI capabilities to the original Owlistic project:
+
+### 🤖 AI Integration (All New)
+- **AI Dashboard**: Central hub for all AI-powered features
+- **AI-Enhanced Notes**: Transform notes with intelligent insights:
+  - Smart summaries of note content
+  - Automatic extraction of actionable tasks
+  - Learning opportunities and knowledge gaps identification
+  - AI-powered tagging based on content analysis
+  - Related notes discovery through semantic search
+- **AI-Powered Task Breakdown**: Convert complex goals into manageable steps
+- **Project Planning**: AI-generated project notebooks with structured workflows
+
+### 🔗 Agent Orchestration System (New)
+- **Agent Chains**: Create complex workflows by chaining multiple AI agents together
+- **Execution Modes**: Sequential, parallel, and conditional agent execution
+- **Built-in Agents**:
+  - **Reasoning Agent**: Multi-step problem solving with structured thinking
+  - **Web Search Agent**: Perplexica integration for advanced web searches
+  - **Note Analyzer**: Extract insights and find related notes
+  - **Task Planner**: Convert goals into actionable task lists
+  - **Code Generator**: Generate code snippets with context
+  - **Summarizer**: Create concise summaries of content
+- **Dynamic Templates**: Pre-built templates for research, note enhancement, and more
+- **Execution Tracking**: Real-time monitoring and history of agent runs
+
+### 🧠 Advanced AI Processing (New)
+- **ChromaDB Vector Search**: Semantic search across all notes using embeddings
+- **Smart Note Formatting**: Agent outputs formatted as structured blocks, not raw JSON
+- **Perplexica Integration**: Advanced web search with focus modes (academic, news, etc.)
+- **Configurable Search Depth**: Shallow, medium, and deep search options
+- **Background Processing**: Long-running AI tasks without blocking the UI
+- **Claude Integration**: Powered by Anthropic's Claude for all AI operations
+
+### 📱 Additional Enhancements
+- **Google Calendar Integration**: Sync your tasks and events with Google Calendar
+- **Telegram Bot Integration**: Access your notes and AI features via Telegram
+- **PWA Support**: Install as Progressive Web App on mobile devices
 
 ## Quick Links
 
@@ -37,22 +81,21 @@
 > [!WARNING]
 > Owlistic is still under active development, so you may encounter bugs or breaking changes as we improve.
 
-## Features
+## Original Features
+
+All features from the original Owlistic project are maintained:
 
 - 📒 Notebooks/Notes tree
 - ✏️ Rich (WYSIWYG) editor
 - ✔️ Inline todo items
-- 🔄 Real-time sync
+- 🔄 Real-time sync with NATS
 - 🔑 JWT-based auth
 - 🔒 Role-based access control
 - 🗑 Trash
 - 🌓 Dark/Light mode
 - ⬇️ Import markdown note
-- 🤖 AI-powered task breakdown and project planning
-- 🎯 Intelligent note enhancement with action steps and learning items
-- 📊 AI dashboard for managing projects and agents
 
-Please have a look at the [features](https://owlistic-notes.github.io/owlistic/docs/category/features) for details.
+Please have a look at the original [features documentation](https://owlistic-notes.github.io/owlistic/docs/category/features) for details.
 
 ### Screenshots
 <details>
@@ -82,80 +125,59 @@ Please have a look at the [features](https://owlistic-notes.github.io/owlistic/d
 
 </details>
 
-## AI Features
-
-Owlistic now includes powerful AI capabilities to enhance your note-taking and productivity workflow. All AI features are powered by Anthropic's Claude and include intelligent fallbacks for robust operation.
-
-### 🤖 AI Dashboard
-
-The AI Dashboard serves as the central hub for all AI-powered features:
-
-- **Task Breakdown**: Enter any goal or complex task and AI will break it down into manageable, sequential steps
-- **Project Management**: Convert task breakdowns into trackable projects with metadata and progress tracking
-- **Agent History**: View and manage all AI agent runs and their execution status
-- **Calendar Integration Ready**: Steps include scheduling placeholders for future Google Calendar integration
-
-### 🎯 AI-Enhanced Notes
-
-Transform your notes with intelligent AI insights:
-
-- **Smart Summaries**: AI generates concise summaries of your note content
-- **Action Steps**: Automatically extract actionable tasks from your notes
-- **Learning Opportunities**: Identify concepts and knowledge gaps for further exploration
-- **AI Tags**: Intelligent tagging based on content analysis
-- **Related Notes**: Semantic search to find related content across your knowledge base
-- **Collapsible Interface**: Clean, organized display of AI insights that can be expanded/collapsed
-
-### 🧠 Agentic AI System
-
-Built on a robust agent architecture:
-
-- **AI Agent Models**: Complete data structures for agent runs, steps, and project management
-- **Agent Types**: Support for different agent behaviors (task breakdown, goal planning, reasoning loops)
-- **Status Tracking**: Real-time monitoring of agent execution with progress indicators
-- **Error Handling**: Robust error recovery and fallback mechanisms
-- **Background Processing**: Long-running AI tasks don't block the user interface
-
-### 🔧 Technical Implementation
-
-- **Backend Models**: Complete Go models for AI agents, projects, and enhanced notes
-- **REST API**: Full API coverage for all AI operations with proper authentication
-- **Vector Embeddings**: ChromaDB integration for semantic search and note similarity
-- **Claude Integration**: Anthropic Claude API integration with proper error handling and timeouts
-- **Structured Prompting**: Carefully crafted prompts for consistent, high-quality AI responses
-- **Fallback Systems**: Graceful degradation when AI services are unavailable
-
-### 🚀 Future Enhancements
-
-- **Google Calendar Integration**: Automatic scheduling of task breakdown steps
-- **Agent-to-Agent Communication**: Collaborative AI workflows
-- **Learning Adaptation**: AI that learns from your preferences and improves over time
-- **Workflow Automation**: Create custom AI workflows for repeated tasks
-- **Advanced Analytics**: Insights into your productivity patterns and AI usage
 
 ## Install
 
-Spin up Owlistic in minutes using your preferred [installation method](https://owlistic-notes.github.io/owlistic/docs/category/installation).
+### Prerequisites for AI Features
+
+To use the enhanced AI features in this fork, you'll need:
+
+1. **Anthropic API Key**: Set `ANTHROPIC_API_KEY` environment variable
+2. **ChromaDB**: Included in docker-compose for vector search
+3. **NATS**: Included in docker-compose for event streaming
+4. **Perplexica** (Optional): Set `PERPLEXICA_BASE_URL` for web search
+5. **Telegram Bot** (Optional): Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+
+### Quick Start with Docker Compose
+
+```bash
+# Clone this fork
+git clone https://github.com/YOUR_USERNAME/owlistic-ai.git
+cd owlistic-ai
+
+# Set up environment variables
+export ANTHROPIC_API_KEY="your-api-key"
+
+# Start all services
+docker-compose up -d
+```
+
+The app will be available at:
+- Web UI: `http://localhost`
+- API: `http://localhost:8080`
+
+For other installation methods, see the original [installation documentation](https://owlistic-notes.github.io/owlistic/docs/category/installation).
 
 ## Contributing
 
-Owlistic is developed by the community, for the community. We welcome contributions of all kinds - from code improvements to documentation updates. Check out our [Contributing Guide](https://owlistic-notes.github.io/owlistic/docs/category/contributing) to learn how you can help.
+This fork welcomes contributions! When contributing:
+- For features specific to this fork, please submit PRs here
+- For core Owlistic features, consider contributing to the [original project](https://github.com/owlistic-notes/owlistic)
+- Follow the [standard-readme](https://github.com/RichardLitt/standard-readme) specification
 
-Small note: If editing the README, please conform to the
-[standard-readme](https://github.com/RichardLitt/standard-readme) specification.
+## Fork Maintainer
 
-## Contributors
+This AI-enhanced fork is maintained by [YOUR_USERNAME].
+
+## Original Contributors
 
 <a href="https://github.com/owlistic-notes/owlistic/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=owlistic-notes/owlistic" />
 </a>
 
-Made with [contrib.rocks](https://contrib.rocks).
-
-## Star history
-
-[![Star History Chart](https://api.star-history.com/svg?repos=owlistic-notes/owlistic&type=Date)](https://www.star-history.com/#owlistic-notes/owlistic)
-
 ## License
 
-GPLv3.0 © 2025 owlistic-notes
+This fork maintains the same GPLv3.0 license as the original project.
+
+GPLv3.0 © 2025 owlistic-notes (original project)
+GPLv3.0 © 2025 [YOUR_USERNAME] (fork enhancements)
