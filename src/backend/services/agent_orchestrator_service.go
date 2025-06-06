@@ -1114,8 +1114,8 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 		if err == nil {
 			noteIDs = append(noteIDs, resultsNote.ID)
 
-			// Add results content
-			resultsJSON, _ := json.MarshalIndent(result.Results, "", "  ")
+			// Format results as human-readable Markdown
+			resultsMarkdown := o.FormatResultsAsMarkdown(result.Results)
 			
 			resultBlocks := []struct {
 				blockType models.BlockType
@@ -1133,7 +1133,7 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 				{
 					blockType: models.TextBlock,
 					content: map[string]interface{}{
-						"text": fmt.Sprintf("```json\n%s\n```", string(resultsJSON)),
+						"text": resultsMarkdown,
 					},
 					order: 2000.0,
 				},
@@ -1155,4 +1155,164 @@ func (o *AgentOrchestrator) saveExecutionAsNotebook(ctx context.Context, userID 
 	}
 
 	return notebook.ID, noteIDs, nil
+}
+
+// FormatResultsAsMarkdown converts chain execution results to human-readable Markdown
+func (o *AgentOrchestrator) FormatResultsAsMarkdown(results map[string]interface{}) string {
+	var markdownBuilder strings.Builder
+	
+	// Process each result in a logical order
+	processedKeys := make(map[string]bool)
+	
+	// First, handle common agent outputs in logical order
+	keyOrder := []string{"search_results", "analysis", "summary", "search_query", "user_id"}
+	
+	for _, key := range keyOrder {
+		if value, exists := results[key]; exists && !processedKeys[key] {
+			o.formatResultSection(&markdownBuilder, key, value)
+			processedKeys[key] = true
+		}
+	}
+	
+	// Then handle any remaining keys
+	for key, value := range results {
+		if !processedKeys[key] {
+			o.formatResultSection(&markdownBuilder, key, value)
+		}
+	}
+	
+	// If no meaningful content was formatted, provide a fallback
+	content := markdownBuilder.String()
+	if strings.TrimSpace(content) == "" {
+		content = "**Results Summary**\n\nThe chain execution completed successfully. The results contain technical data that has been processed by the agent chain."
+	}
+	
+	return content
+}
+
+// formatResultSection formats a single result section as Markdown
+func (o *AgentOrchestrator) formatResultSection(builder *strings.Builder, key string, value interface{}) {
+	// Skip internal/technical keys that aren't user-friendly
+	skipKeys := map[string]bool{
+		"user_id": true,
+	}
+	
+	if skipKeys[key] {
+		return
+	}
+	
+	// Create a human-readable section title
+	sectionTitle := o.humanizeKey(key)
+	builder.WriteString(fmt.Sprintf("## %s\n\n", sectionTitle))
+	
+	// Format the value based on its type
+	switch v := value.(type) {
+	case string:
+		// Handle string values
+		if strings.Contains(v, "\n") {
+			// Multi-line string - format as blockquote or preserve formatting
+			builder.WriteString(fmt.Sprintf("%s\n\n", v))
+		} else if len(v) > 200 {
+			// Long single-line string - add line breaks for readability
+			builder.WriteString(fmt.Sprintf("%s\n\n", v))
+		} else {
+			// Short string
+			builder.WriteString(fmt.Sprintf("%s\n\n", v))
+		}
+		
+	case map[string]interface{}:
+		// Handle nested objects
+		o.formatMapAsMarkdown(builder, v, 0)
+		builder.WriteString("\n")
+		
+	case []interface{}:
+		// Handle arrays
+		builder.WriteString("- " + strings.Join(o.formatArrayAsStrings(v), "\n- ") + "\n\n")
+		
+	default:
+		// Handle other types (numbers, booleans, etc.)
+		builder.WriteString(fmt.Sprintf("%v\n\n", v))
+	}
+}
+
+// humanizeKey converts technical keys to human-readable titles
+func (o *AgentOrchestrator) humanizeKey(key string) string {
+	humanNames := map[string]string{
+		"search_results": "🔍 Search Results",
+		"analysis":       "🧠 Analysis",
+		"summary":        "📋 Summary", 
+		"search_query":   "🔎 Search Query",
+		"web_search":     "🌐 Web Search Results",
+		"reasoning":      "💭 Reasoning",
+		"final_answer":   "✅ Final Answer",
+		"steps":          "📝 Steps",
+		"conclusion":     "🎯 Conclusion",
+	}
+	
+	if humanName, exists := humanNames[key]; exists {
+		return humanName
+	}
+	
+	// Fallback: capitalize and replace underscores
+	words := strings.Split(key, "_")
+	for i, word := range words {
+		if len(word) > 0 {
+			words[i] = strings.ToUpper(word[:1]) + strings.ToLower(word[1:])
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+// formatMapAsMarkdown formats a map as nested Markdown
+func (o *AgentOrchestrator) formatMapAsMarkdown(builder *strings.Builder, data map[string]interface{}, indent int) {
+	indentStr := strings.Repeat("  ", indent)
+	
+	for key, value := range data {
+		humanKey := o.humanizeKey(key)
+		
+		switch v := value.(type) {
+		case string:
+			if strings.Contains(v, "\n") {
+				builder.WriteString(fmt.Sprintf("%s**%s:**\n%s%s\n\n", indentStr, humanKey, indentStr, v))
+			} else {
+				builder.WriteString(fmt.Sprintf("%s**%s:** %s\n", indentStr, humanKey, v))
+			}
+			
+		case map[string]interface{}:
+			builder.WriteString(fmt.Sprintf("%s**%s:**\n", indentStr, humanKey))
+			o.formatMapAsMarkdown(builder, v, indent+1)
+			
+		case []interface{}:
+			builder.WriteString(fmt.Sprintf("%s**%s:**\n", indentStr, humanKey))
+			for _, item := range v {
+				builder.WriteString(fmt.Sprintf("%s  - %v\n", indentStr, item))
+			}
+			
+		default:
+			builder.WriteString(fmt.Sprintf("%s**%s:** %v\n", indentStr, humanKey, v))
+		}
+	}
+}
+
+// formatArrayAsStrings converts an array to string slice for formatting
+func (o *AgentOrchestrator) formatArrayAsStrings(arr []interface{}) []string {
+	var result []string
+	for _, item := range arr {
+		switch v := item.(type) {
+		case string:
+			result = append(result, v)
+		case map[string]interface{}:
+			// For complex objects, try to extract meaningful text
+			if title, exists := v["title"]; exists {
+				result = append(result, fmt.Sprintf("%v", title))
+			} else if name, exists := v["name"]; exists {
+				result = append(result, fmt.Sprintf("%v", name))
+			} else {
+				result = append(result, fmt.Sprintf("%v", v))
+			}
+		default:
+			result = append(result, fmt.Sprintf("%v", v))
+		}
+	}
+	return result
 }
