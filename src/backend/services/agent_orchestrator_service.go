@@ -246,6 +246,11 @@ func (o *AgentOrchestrator) ExecuteChain(ctx context.Context, req ChainExecution
 	for k, v := range req.InitialData {
 		chainData[k] = v
 	}
+	
+	// Add user ID to chain data for agent access
+	if req.UserID != uuid.Nil {
+		chainData["user_id"] = req.UserID
+	}
 
 	// Execute based on mode
 	fmt.Printf("Executing chain %s (%s) with %d agents in %s mode\n", chain.Name, chain.ID, len(chain.Agents), chain.Mode)
@@ -465,6 +470,11 @@ func (o *AgentOrchestrator) executeSingleAgent(ctx context.Context, agentDef Age
 		if value, exists := chainData[chainKey]; exists {
 			input[agentKey] = value
 		}
+	}
+	
+	// Always include user_id if available in chain data
+	if userID, exists := chainData["user_id"]; exists {
+		input["user_id"] = userID
 	}
 
 	// Execute the agent

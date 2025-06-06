@@ -362,8 +362,18 @@ func (r *ReasoningAgentService) executeSearchAction(ctx context.Context, reasoni
 		
 		return fmt.Sprintf("Found %d relevant notes for '%s'", len(notes), query), nil
 	} else if r.ai.perplexicaService != nil && r.ai.perplexicaService.IsEnabled() {
-		// Use Perplexica for web search
-		userID := reasoningCtx.Resources["user_id"].(uuid.UUID)
+		// Use Perplexica for web search - with safe user ID extraction
+		var userID uuid.UUID
+		if userIDValue, exists := reasoningCtx.Resources["user_id"]; exists && userIDValue != nil {
+			if uid, ok := userIDValue.(uuid.UUID); ok {
+				userID = uid
+			}
+		}
+		// If userID is still nil/empty, use a default or skip search
+		if userID == uuid.Nil {
+			return fmt.Sprintf("Web search skipped for '%s' - no valid user context", query), nil
+		}
+		
 		searchResult, err := r.ai.SearchWithPerplexica(ctx, userID, query, "webSearch", nil)
 		if err != nil {
 			return "", err
