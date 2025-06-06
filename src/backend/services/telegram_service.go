@@ -80,30 +80,53 @@ func NewTelegramService(db *gorm.DB, aiService *AIService) (*TelegramService, er
 	}, nil
 }
 
-// StartListening starts the Telegram bot polling loop
+// StartListening starts the Telegram bot polling loop with error recovery
 func (ts *TelegramService) StartListening() error {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates := ts.bot.GetUpdatesChan(u)
-
 	log.Printf("Telegram bot listening for messages...")
 
-	for update := range updates {
-		if update.Message == nil {
-			continue
-		}
+	for {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Telegram bot panic recovered: %v", r)
+				}
+			}()
 
-		// Check if message is from allowed chat
-		if update.Message.Chat.ID != ts.allowedChatID {
-			log.Printf("Ignoring message from unauthorized chat: %d", update.Message.Chat.ID)
-			continue
-		}
+			u := tgbotapi.NewUpdate(0)
+			u.Timeout = 30 // Reduced timeout to prevent long hangs
 
-		go ts.handleMessage(update.Message)
+			updates := ts.bot.GetUpdatesChan(u)
+
+			for update := range updates {
+				if update.Message == nil {
+					continue
+				}
+
+				// Check if message is from allowed chat
+				if update.Message.Chat.ID != ts.allowedChatID {
+					log.Printf("Ignoring message from unauthorized chat: %d", update.Message.Chat.ID)
+					continue
+				}
+
+				go ts.handleMessage(update.Message)
+			}
+		}()
+
+		// If we get here, the updates channel closed (network error, etc.)
+		log.Printf("Telegram bot connection lost, reconnecting in 5 seconds...")
+		time.Sleep(5 * time.Second)
+		
+		// Recreate bot connection
+		botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+		if botToken != "" {
+			if newBot, err := tgbotapi.NewBotAPI(botToken); err == nil {
+				ts.bot = newBot
+				log.Printf("Telegram bot reconnected successfully")
+			} else {
+				log.Printf("Failed to reconnect Telegram bot: %v", err)
+			}
+		}
 	}
-
-	return nil
 }
 
 // handleMessage processes incoming Telegram messages
@@ -1473,21 +1496,74 @@ func (ts *TelegramService) getDefaultUserID(ctx context.Context) (uuid.UUID, err
 	return user.ID, nil
 }
 
-// sendMessage sends a message to the configured Telegram chat
+// sendMessage sends a message to the configured Telegram chat with timeout protection
 func (ts *TelegramService) sendMessage(text string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Telegram sendMessage panic recovered: %v", r)
+		}
+	}()
+
 	msg := tgbotapi.NewMessage(ts.allowedChatID, text)
 	msg.ParseMode = "Markdown"
 	
-	if _, err := ts.bot.Send(msg); err != nil {
-		log.Printf("Failed to send Telegram message: %v", err)
+	// Create a context with timeout for the send operation
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	// Use a goroutine with timeout to prevent blocking
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- fmt.Errorf("panic in send: %v", r)
+			}
+		}()
+		_, err := ts.bot.Send(msg)
+		done <- err
+	}()
+	
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Printf("Failed to send Telegram message: %v", err)
+		}
+	case <-ctx.Done():
+		log.Printf("Telegram message send timeout")
 	}
 }
 
 // SendNotification sends a notification to Telegram (can be used by other services)
 func (ts *TelegramService) SendNotification(message string) error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Telegram SendNotification panic recovered: %v", r)
+		}
+	}()
+
 	msg := tgbotapi.NewMessage(ts.allowedChatID, message)
 	msg.ParseMode = "Markdown"
 	
-	_, err := ts.bot.Send(msg)
-	return err
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	// Use a goroutine with timeout to prevent blocking
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- fmt.Errorf("panic in send notification: %v", r)
+			}
+		}()
+		_, err := ts.bot.Send(msg)
+		done <- err
+	}()
+	
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("telegram notification send timeout")
+	}
 }
