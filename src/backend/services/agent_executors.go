@@ -69,7 +69,16 @@ func (r *ReasoningAgentExecutor) Execute(ctx context.Context, input map[string]i
 		return nil, err
 	}
 
-	return result, nil
+	// Extract readable content from the reasoning result for downstream agents
+	if result.OutputData != nil {
+		if learnings, exists := result.OutputData["learnings"]; exists {
+			return fmt.Sprintf("Reasoning Analysis:\n\nProblem: %s\n\nLearnings: %v\n\nFinal State: %v", 
+				req.Problem, learnings, result.OutputData["final_state"]), nil
+		}
+	}
+	
+	// Fallback to basic summary
+	return fmt.Sprintf("Reasoning completed for: %s\nStatus: %s", req.Problem, result.Status), nil
 }
 
 func (r *ReasoningAgentExecutor) GetType() AgentType {
