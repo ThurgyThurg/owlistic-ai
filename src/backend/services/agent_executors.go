@@ -17,10 +17,23 @@ type ReasoningAgentExecutor struct {
 }
 
 func (r *ReasoningAgentExecutor) Execute(ctx context.Context, input map[string]interface{}) (interface{}, error) {
-	// Extract parameters
-	problem, ok := input["problem"].(string)
-	if !ok {
-		return nil, fmt.Errorf("missing or invalid 'problem' parameter")
+	// Extract parameters - handle both string and complex object inputs
+	var problem string
+	if problemStr, ok := input["problem"].(string); ok {
+		problem = problemStr
+	} else if problemObj, ok := input["problem"].(map[string]interface{}); ok {
+		// Handle search results from WebSearchAgent
+		if results, exists := problemObj["results"]; exists {
+			if resultsStr, ok := results.(string); ok {
+				problem = resultsStr
+			} else {
+				problem = fmt.Sprintf("Search Results: %v", results)
+			}
+		} else {
+			problem = fmt.Sprintf("Analysis Input: %v", problemObj)
+		}
+	} else {
+		return nil, fmt.Errorf("missing or invalid 'problem' parameter - expected string or object with results")
 	}
 
 	strategy := ReasoningStrategy("multi_strategy")
