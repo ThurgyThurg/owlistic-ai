@@ -127,6 +127,7 @@ type AgentOrchestrator struct {
 	aiService           *AIService
 	activeExecutions    map[string]*ChainExecutionResult
 	registeredAgents    map[AgentType]AgentExecutor
+	activeChains        map[string]*AgentChain // Store chains during execution
 }
 
 // AgentExecutor interface that all agents must implement
@@ -141,6 +142,7 @@ func NewAgentOrchestrator(db *gorm.DB) *AgentOrchestrator {
 		db:               db,
 		activeExecutions: make(map[string]*ChainExecutionResult),
 		registeredAgents: make(map[AgentType]AgentExecutor),
+		activeChains:     make(map[string]*AgentChain),
 	}
 
 	// Initialize services
@@ -288,8 +290,9 @@ func (o *AgentOrchestrator) ExecuteChain(ctx context.Context, req ChainExecution
 		}()
 	}
 
-	// Clean up active execution
+	// Clean up active execution and chain
 	delete(o.activeExecutions, result.ID)
+	delete(o.activeChains, result.ChainID)
 
 	return result, err
 }
@@ -609,10 +612,15 @@ func (o *AgentOrchestrator) shouldRetry(err error, policy RetryPolicy) bool {
 
 // saveChainAsAIAgent saves a chain definition as an AIAgent for execution tracking
 func (o *AgentOrchestrator) saveChainAsAIAgent(chain *AgentChain, userID uuid.UUID) (*models.AIAgent, error) {
-	// Convert chain to JSON for storage in input_data
-	chainData := make(models.AIMetadata)
-	chainBytes, _ := json.Marshal(chain)
-	json.Unmarshal(chainBytes, &chainData)
+	// Store only essential metadata, not the entire chain struct
+	// This avoids JSON serialization issues with complex nested types
+	chainData := models.AIMetadata{
+		"chain_name":        chain.Name,
+		"chain_description": chain.Description,
+		"chain_mode":        string(chain.Mode),
+		"chain_timeout":     chain.Timeout,
+		"agent_count":       len(chain.Agents),
+	}
 	
 	aiAgent := &models.AIAgent{
 		ID:        uuid.MustParse(chain.ID),
@@ -630,23 +638,16 @@ func (o *AgentOrchestrator) saveChainAsAIAgent(chain *AgentChain, userID uuid.UU
 	return aiAgent, nil
 }
 
-// LoadChainDefinition loads a chain definition from database
+// LoadChainDefinition loads a chain definition 
 func (o *AgentOrchestrator) LoadChainDefinition(chainID string) (*AgentChain, error) {
-	// Try to load from AIAgent table first
-	var aiAgent models.AIAgent
-	err := o.db.Where("id = ? AND agent_type = ?", chainID, "agent_chain").First(&aiAgent).Error
-	if err == nil {
-		fmt.Printf("Found chain in AIAgent table: %s\n", chainID)
-		// Convert back from JSON
-		var chain AgentChain
-		chainBytes, _ := json.Marshal(aiAgent.InputData)
-		if err := json.Unmarshal(chainBytes, &chain); err == nil {
-			return &chain, nil
-		}
+	// Check active chains first (dynamically created chains)
+	if chain, exists := o.activeChains[chainID]; exists {
+		fmt.Printf("Found chain in active chains: %s\n", chainID)
+		return chain, nil
 	}
 	
-	// If not found in database, check hardcoded chains for backward compatibility
-	fmt.Printf("Chain not found in database, checking hardcoded chains: %s\n", chainID)
+	// Check hardcoded/template chains 
+	fmt.Printf("Chain not in active chains, checking hardcoded chains: %s\n", chainID)
 	
 	switch chainID {
 	case "research-and-summarize":
@@ -776,13 +777,16 @@ func (o *AgentOrchestrator) CreateCustomChain(chain *AgentChain) error {
 		}
 	}
 	
+	// Store chain in memory for execution
+	o.activeChains[chain.ID] = chain
+	
 	// Save chain as AIAgent for tracking
 	_, err := o.saveChainAsAIAgent(chain, chain.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to save chain to database: %w", err)
 	}
 	
-	fmt.Printf("Saved chain %s to database as AIAgent\n", chain.ID)
+	fmt.Printf("Saved chain %s to memory and database\n", chain.ID)
 	return nil
 }
 
