@@ -80,26 +80,15 @@ func NewPerplexicaService() *PerplexicaService {
 	}
 }
 
-// IsEnabled checks if Perplexica service is configured and available
+// IsEnabled checks if Perplexica service is configured (without health check to prevent recursion)
 func (p *PerplexicaService) IsEnabled() bool {
 	// Check if PERPLEXICA_BASE_URL is configured
 	if os.Getenv("PERPLEXICA_BASE_URL") == "" {
 		return false
 	}
 
-	// Perform health check with a short timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	
-	err := p.HealthCheck(ctx)
-	if err != nil {
-		p.logger.Warn("Perplexica health check failed", map[string]interface{}{
-			"error": err.Error(),
-		})
-		return false
-	}
-	
-	return true
+	// Just check if URL is configured - don't do health check here to prevent infinite recursion
+	return p.baseURL != ""
 }
 
 // Search performs a search using Perplexica with the specified focus mode
