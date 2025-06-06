@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -621,27 +623,26 @@ func (aor *AgentOrchestratorRoutes) instantiateTemplate(c *gin.Context) {
 	executeNow := getBoolParam(params, "execute", true)
 	
 	if executeNow {
-		// Execute the chain
+		// Execute the chain asynchronously to prevent HTTP timeout issues
 		req := services.ChainExecutionRequest{
 			ChainID:     chain.ID,
 			InitialData: initialData,
 			UserID:      userUUID,
 		}
 		
-		result, err := aor.orchestrator.ExecuteChain(c.Request.Context(), req)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   err.Error(),
-				"chain":   chain,
-				"message": "Chain created but execution failed",
-			})
-			return
-		}
+		// Start execution in background
+		go func() {
+			// Use background context to prevent cancellation when HTTP request completes
+			_, err := aor.orchestrator.ExecuteChain(context.Background(), req)
+			if err != nil {
+				log.Printf("Background chain execution failed: %v", err)
+			}
+		}()
 		
-		c.JSON(http.StatusCreated, gin.H{
-			"chain":     chain,
-			"execution": result,
-			"message":   "Chain created and execution started",
+		c.JSON(http.StatusAccepted, gin.H{
+			"chain":   chain,
+			"message": "Chain created and execution started in background",
+			"note":    "Check execution status with GET /executions",
 		})
 	} else {
 		c.JSON(http.StatusCreated, gin.H{

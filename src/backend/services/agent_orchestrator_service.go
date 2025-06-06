@@ -477,8 +477,13 @@ func (o *AgentOrchestrator) executeSingleAgent(ctx context.Context, agentDef Age
 		input["user_id"] = userID
 	}
 
-	// Execute the agent
-	output, err := executor.Execute(ctx, input)
+	// Create independent context for agent execution to prevent cancellation
+	// when the main request context times out
+	agentCtx, agentCancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer agentCancel()
+	
+	// Execute the agent with independent context
+	output, err := executor.Execute(agentCtx, input)
 
 	// Log execution
 	endTime := time.Now()
