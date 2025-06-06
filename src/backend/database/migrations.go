@@ -105,6 +105,21 @@ func runManualMigrations(db *gorm.DB) error {
 		log.Printf("Failed to add composite index on ai_enhanced_notes: %v", err)
 	}
 
+	// Add indexes for ai_agents table (agent chains use agent_type = 'agent_chain')
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_ai_agents_agent_type 
+		ON ai_agents(agent_type);
+	`).Error; err != nil {
+		log.Printf("Failed to add index on ai_agents.agent_type: %v", err)
+	}
+
+	if err := db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_ai_agents_user_status 
+		ON ai_agents(user_id, status);
+	`).Error; err != nil {
+		log.Printf("Failed to add index on ai_agents user_status: %v", err)
+	}
+
 	log.Println("Manual migrations completed")
 	return nil
 }

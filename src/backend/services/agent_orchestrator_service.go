@@ -272,6 +272,11 @@ func (o *AgentOrchestrator) ExecuteChain(ctx context.Context, req ChainExecution
 	// Store final results
 	result.Results = chainData
 
+	// Save execution result to database
+	if saveErr := o.SaveExecutionResult(result); saveErr != nil {
+		fmt.Printf("Failed to save execution result to database: %v\n", saveErr)
+	}
+
 	// Save execution as notebook and notes if successful
 	if err == nil && req.UserID != uuid.Nil {
 		go func() {
@@ -602,10 +607,46 @@ func (o *AgentOrchestrator) shouldRetry(err error, policy RetryPolicy) bool {
 	return false
 }
 
-// LoadChainDefinition loads a chain definition (placeholder - should load from DB)
+// saveChainAsAIAgent saves a chain definition as an AIAgent for execution tracking
+func (o *AgentOrchestrator) saveChainAsAIAgent(chain *AgentChain, userID uuid.UUID) (*models.AIAgent, error) {
+	// Convert chain to JSON for storage in input_data
+	chainData := make(models.AIMetadata)
+	chainBytes, _ := json.Marshal(chain)
+	json.Unmarshal(chainBytes, &chainData)
+	
+	aiAgent := &models.AIAgent{
+		ID:        uuid.MustParse(chain.ID),
+		UserID:    userID,
+		AgentType: "agent_chain",
+		Status:    "running",
+		InputData: chainData,
+	}
+	
+	err := o.db.Create(aiAgent).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to save chain as AIAgent: %w", err)
+	}
+	
+	return aiAgent, nil
+}
+
+// LoadChainDefinition loads a chain definition from database
 func (o *AgentOrchestrator) LoadChainDefinition(chainID string) (*AgentChain, error) {
-	// In a real implementation, this would load from database
-	// For now, return some example chains
+	// Try to load from AIAgent table first
+	var aiAgent models.AIAgent
+	err := o.db.Where("id = ? AND agent_type = ?", chainID, "agent_chain").First(&aiAgent).Error
+	if err == nil {
+		fmt.Printf("Found chain in AIAgent table: %s\n", chainID)
+		// Convert back from JSON
+		var chain AgentChain
+		chainBytes, _ := json.Marshal(aiAgent.InputData)
+		if err := json.Unmarshal(chainBytes, &chain); err == nil {
+			return &chain, nil
+		}
+	}
+	
+	// If not found in database, check hardcoded chains for backward compatibility
+	fmt.Printf("Chain not found in database, checking hardcoded chains: %s\n", chainID)
 	
 	switch chainID {
 	case "research-and-summarize":
@@ -735,9 +776,94 @@ func (o *AgentOrchestrator) CreateCustomChain(chain *AgentChain) error {
 		}
 	}
 	
-	// In real implementation, save to database
-	// For now, just validate
+	// Save chain as AIAgent for tracking
+	_, err := o.saveChainAsAIAgent(chain, chain.UserID)
+	if err != nil {
+		return fmt.Errorf("failed to save chain to database: %w", err)
+	}
 	
+	fmt.Printf("Saved chain %s to database as AIAgent\n", chain.ID)
+	return nil
+}
+
+// SaveExecutionResult saves an execution result to the database using AIAgent
+func (o *AgentOrchestrator) SaveExecutionResult(result *ChainExecutionResult) error {
+	// Update the AIAgent with completion status and results
+	var aiAgent models.AIAgent
+	err := o.db.Where("id = ?", result.ChainID).First(&aiAgent).Error
+	if err != nil {
+		return fmt.Errorf("failed to find AIAgent for chain: %w", err)
+	}
+
+	// Update status and output data
+	aiAgent.Status = result.Status
+	if result.EndTime != nil {
+		aiAgent.CompletedAt = result.EndTime
+	}
+	
+	// Store results in output_data
+	if result.Results != nil {
+		outputData := make(models.AIMetadata)
+		for k, v := range result.Results {
+			outputData[k] = v
+		}
+		aiAgent.OutputData = outputData
+	}
+
+	// Store errors if any
+	if len(result.Errors) > 0 {
+		if aiAgent.OutputData == nil {
+			aiAgent.OutputData = make(models.AIMetadata)
+		}
+		aiAgent.OutputData["errors"] = result.Errors
+	}
+
+	// Save individual steps as AIAgentStep
+	for i, log := range result.ExecutionLog {
+		step := &models.AIAgentStep{
+			AgentID:     aiAgent.ID,
+			StepNumber:  i + 1,
+			Name:        log.AgentName,
+			Description: fmt.Sprintf("Agent: %s (%s)", log.AgentName, log.AgentID),
+			Status:      log.Status,
+			StartedAt:   &log.StartTime,
+			CompletedAt: &log.EndTime,
+		}
+
+		// Store input/output data
+		if log.Input != nil {
+			inputData := make(models.AIMetadata)
+			for k, v := range log.Input {
+				inputData[k] = v
+			}
+			step.InputData = inputData
+		}
+
+		if log.Output != nil {
+			outputData := make(models.AIMetadata)
+			if outputMap, ok := log.Output.(map[string]interface{}); ok {
+				for k, v := range outputMap {
+					outputData[k] = v
+				}
+			} else {
+				outputData["result"] = log.Output
+			}
+			step.OutputData = outputData
+		}
+
+		// Save the step
+		if err := o.db.Create(step).Error; err != nil {
+			fmt.Printf("Failed to save agent step %d: %v\n", i+1, err)
+		}
+	}
+
+	// Update the agent
+	err = o.db.Save(&aiAgent).Error
+	if err != nil {
+		return fmt.Errorf("failed to update AIAgent with results: %w", err)
+	}
+
+	fmt.Printf("Saved execution result for AIAgent %s\n", aiAgent.ID)
 	return nil
 }
 
