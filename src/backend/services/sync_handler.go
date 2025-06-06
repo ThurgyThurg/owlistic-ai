@@ -56,18 +56,36 @@ func (s *SyncHandlerService) Stop() {
 	log.Println("Block-Task Sync Handler stopped")
 }
 
-// processEvents handles incoming events
+// processEvents handles incoming events with crash protection
 func (s *SyncHandlerService) processEvents(messageChan chan *nats.Msg) {
-	for {
-		select {
-		case msg := <-messageChan:
-			// Parse the message
-			if err := s.handleSyncEvent(msg.Subject, msg.Data); err != nil {
-				log.Printf("Error handling sync event %s: %v", msg.Subject, err)
-			}
-			// Broadcast the event to all connected clients
-		case <-time.After(1 * time.Second):
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("SyncHandlerService panic recovered: %v", r)
 		}
+	}()
+
+	for {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("SyncHandlerService message processing panic recovered: %v", r)
+				}
+			}()
+
+			select {
+			case msg := <-messageChan:
+				if msg == nil {
+					return
+				}
+				// Parse the message
+				if err := s.handleSyncEvent(msg.Subject, msg.Data); err != nil {
+					log.Printf("Error handling sync event %s: %v", msg.Subject, err)
+				}
+				// Broadcast the event to all connected clients
+			case <-time.After(1 * time.Second):
+				// Timeout to prevent blocking forever
+			}
+		}()
 	}
 }
 

@@ -146,8 +146,14 @@ func main() {
 		log.Println("Zettelkasten routes registered successfully")
 	}
 
-	// Initialize Telegram service and routes (optional - won't crash app if it fails)
+	// Initialize Telegram service and routes (optional - disabled to prevent crashes)
 	aiService := services.NewAIService(db.DB)
+	
+	// Temporarily disable Telegram to prevent crashes
+	log.Printf("Telegram service is disabled to prevent application crashes")
+	log.Printf("Note: To re-enable, uncomment the Telegram initialization code in main.go")
+	
+	/*
 	telegramService, err := services.NewTelegramService(db.DB, aiService)
 	if err != nil {
 		log.Printf("Failed to initialize Telegram service: %v", err)
@@ -172,6 +178,7 @@ func main() {
 		}()
 		log.Println("Telegram bot started and listening for messages...")
 	}
+	*/
 
 	// Register debug routes for monitoring events
 	routes.SetupDebugRoutes(router, db)
@@ -179,6 +186,12 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Signal handler panic recovered: %v", r)
+				os.Exit(1)
+			}
+		}()
 		<-quit
 		log.Println("Shutting down server...")
 		os.Exit(0)
