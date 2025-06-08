@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // GoogleCalendarCredentials stores OAuth tokens for Google Calendar access
@@ -172,9 +173,11 @@ func GetEventByGoogleID(db *gorm.DB, userID uuid.UUID, googleEventID string) (*C
 
 // CreateOrUpdateEvent creates a new event or updates an existing one
 func CreateOrUpdateEvent(db *gorm.DB, event *CalendarEvent) error {
-	// Try to find existing event by Google ID
+	// Try to find existing event by Google ID (using Session to suppress 'record not found' logs)
 	var existing CalendarEvent
-	err := db.Where("user_id = ? AND google_event_id = ?", event.UserID, event.GoogleEventID).First(&existing).Error
+	err := db.Session(&gorm.Session{Logger: db.Logger.LogMode(logger.Silent)}).
+		Where("user_id = ? AND google_event_id = ?", event.UserID, event.GoogleEventID).
+		First(&existing).Error
 	
 	if err == gorm.ErrRecordNotFound {
 		// Create new event
